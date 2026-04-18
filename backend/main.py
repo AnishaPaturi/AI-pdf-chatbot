@@ -1,7 +1,7 @@
 import os
 import shutil
 from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.middleware.cors import CorsMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 # We use ChatOpenAI because OpenRouter is fully compatible with the OpenAI API format!
@@ -30,9 +30,7 @@ app = FastAPI(
 # Crucial: We need CORS so our NextJS app (running on localhost:3000) can actually talk to this API
 # Without this, the browser would block the requests.
 app.add_middleware(
-    # Yes, it looks weird but CorsMiddleware is not natively exported easily, wait, FastAPI provides it natively:
-    # Actually CORSMiddleware is in fastapi.middleware.cors
-    CorsMiddleware,
+    CORSMiddleware,
     allow_origins=["http://localhost:3000"], # NextJS default port
     allow_credentials=True,
     allow_methods=["*"],
