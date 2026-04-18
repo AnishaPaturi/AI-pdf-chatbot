@@ -12,8 +12,8 @@ from langchain_community.vectorstores import Chroma
 
 # Using HuggingFace for fast, local, and free embeddings (doesn't eat up OpenRouter credits!)
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain.chains import create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_core.runnables import RunnablePassthrough
+from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from dotenv import load_dotenv
 
@@ -181,22 +181,25 @@ async def chat_with_pdf(request: ChatRequest):
             ("human", "{input}"),
         ])
 
-        # 3. Create the chains! 
-        # First, a component to format the documents we pull from the DB into the `{context}` variable.
-        question_answer_chain = create_stuff_documents_chain(llm, prompt)
-        
-        # Second, we wrap that in a Retrieval Chain that auto-fetches the similar docs 
-        # from our VectorStore based on the query, before running the answer chain.
+        # 3. Create the core LCEL chain
         # We fetch the top 4 most relevant chunks.
         retriever = store.as_retriever(search_kwargs={"k": 4})
-        rag_chain = create_retrieval_chain(retriever, question_answer_chain)
+        
+        def format_docs(docs):
+            return "\n\n".join(doc.page_content for doc in docs)
+
+        rag_chain = (
+            {"context": retriever | format_docs, "input": RunnablePassthrough()}
+            | prompt
+            | llm
+            | StrOutputParser()
+        )
 
         # 4. Final step! We run the entire chain, feeding it the raw user 'input'
-        print("Invoking LangChain RAG pipeline...")
-        response = rag_chain.invoke({"input": query})
-
-        # Langchain outputs a dictionary, the answer text is housed under the "answer" key
-        final_answer = response["answer"]
+        print("Invoking LangChain LCEL RAG pipeline...")
+        # Since we use LCEL with StrOutputParser, it outputs the raw string answer directly!
+        final_answer = rag_chain.invoke(query)
+        
         print(f"Generated answer snippet: {final_answer[:100]}...")
 
         return ChatResponse(answer=final_answer)
