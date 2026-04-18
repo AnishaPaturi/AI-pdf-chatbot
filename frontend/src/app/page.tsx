@@ -1,363 +1,625 @@
-"use client";
+'use client';
 
-import React, { useState, useRef, useEffect } from "react";
-import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
-import { UploadCloud, MessageSquare, Send, File, CheckCircle2, Loader2, Bot, User, ArrowRight, Rocket } from "lucide-react";
+import React from 'react';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { ArrowRight, Zap, Shield, BarChart3, MessageSquare, CheckCircle, Github, Twitter, Mail } from 'lucide-react';
 
-type Message = {
-  id: string;
-  role: "user" | "bot";
-  content: string;
+const fadeInUp = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.6 }
 };
 
-export default function LandingPage() {
-  // --- RAG State ---
-  const [file, setFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadSuccess, setUploadSuccess] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [inputValue, setInputValue] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
-  
-  // Ref for smooth scrolling down to the chat interface
-  const chatSectionRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  // --- Handlers ---
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
-      setUploadSuccess(false);
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!file) return;
-    setIsUploading(true);
-    
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const response = await fetch("http://localhost:8000/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (response.ok) {
-        setUploadSuccess(true);
-        setMessages([
-          {
-            id: Date.now().toString(),
-            role: "bot",
-            content: `Document secured. Let's delve into "${file.name}". What's your inquiry?`,
-          },
-        ]);
-        // Scroll down slightly so they focus on the chat
-        setTimeout(() => {
-          chatSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 500);
-      } else {
-        const errorData = await response.json();
-        alert(`Upload failed: ${errorData.detail}`);
-      }
-    } catch (error) {
-      console.error("Error uploading file:", error);
-      alert("Failed to connect to the backend server. Is FastAPI running?");
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputValue.trim() || !uploadSuccess) return;
-
-    const newUserMsg: Message = { id: Date.now().toString(), role: "user", content: inputValue };
-    setMessages((prev) => [...prev, newUserMsg]);
-    setInputValue("");
-    setIsTyping(true);
-
-    try {
-      const response = await fetch("http://localhost:8000/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: newUserMsg.content }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const newBotMsg: Message = { id: (Date.now() + 1).toString(), role: "bot", content: data.answer };
-        setMessages((prev) => [...prev, newBotMsg]);
-      } else {
-        const errorData = await response.json();
-        setMessages((prev) => [...prev, { id: Date.now().toString(), role: "bot", content: `Error: ${errorData.detail}` }]);
-      }
-    } catch (error) {
-      setMessages((prev) => [...prev, { id: Date.now().toString(), role: "bot", content: "Connection Error: Is the API running?" }]);
-    } finally {
-      setIsTyping(false);
-    }
-  };
-
-  const scrollToChat = () => chatSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
-
+export default function Home() {
   return (
-    <div className="min-h-screen text-slate-100 font-sans selection:bg-indigo-500/30 overflow-x-hidden relative">
-      {/* 
-        PREMIUM BACKGROUND 
-        Starry deep space simulation via complex radial gradients
-      */}
-      <div className="fixed inset-0 z-[-1] bg-[#050B14]">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-[#050B14] to-[#050B14]"></div>
-        {/* Subtle mesh glowing orb in the center */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-600/10 blur-[120px] rounded-full pointer-events-none"></div>
-      </div>
-
-      {/* --- NAVIGATION BAR --- */}
-      <nav className="w-full max-w-7xl mx-auto px-6 py-6 flex items-center justify-between relative z-20">
-        <div className="flex items-center gap-2">
-          <div className="bg-gradient-to-tr from-indigo-500 to-purple-500 p-2 rounded-xl">
-            <MessageSquare size={20} className="text-white" />
+    <div className="bg-black text-white font-sans">
+      {/* Navigation */}
+      <nav className="fixed top-0 w-full z-50 border-b border-white/10 bg-black/80 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-2xl font-bold">
+            DocuMind
+          </motion.div>
+          <div className="hidden md:flex items-center gap-8 text-sm font-medium">
+            <button className="text-white/70 hover:text-white transition">Features</button>
+            <button className="text-white/70 hover:text-white transition">Pricing</button>
+            <button className="text-white/70 hover:text-white transition">Docs</button>
           </div>
-          <span className="text-xl font-bold tracking-tight">VaatBot</span>
-        </div>
-        
-        {/* We hide links on very small screens for simplicity */}
-        <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
-          <button className="bg-indigo-600/20 text-indigo-400 px-4 py-1.5 rounded-full ring-1 ring-indigo-500/30 hover:bg-indigo-600/30 transition-all">Home</button>
-          <button className="hover:text-white transition-colors">About</button>
-          <button className="hover:text-white transition-colors">Services</button>
-          <button className="hover:text-white transition-colors">Pricing</button>
-          <button className="hover:text-white transition-colors">Blog</button>
-          <button className="hover:text-white transition-colors">Contact</button>
-        </div>
-
-        <div className="flex items-center gap-4 text-sm font-medium">
-          <button className="hidden sm:block hover:text-white transition-colors bg-indigo-600 px-6 py-2.5 rounded-full shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_30px_rgba(79,70,229,0.5)]">
-            Login
-          </button>
-          <button className="ring-1 ring-white/20 hover:bg-white/5 px-6 py-2.5 rounded-full transition-all">
-            Book a call
-          </button>
+          <div className="flex items-center gap-4">
+            <Link href="/auth/login">
+              <button className="text-white/70 hover:text-white transition text-sm font-medium">Sign in</button>
+            </Link>
+            <Link href="/auth/register">
+              <button className="bg-white text-black px-6 py-2.5 rounded-lg font-semibold text-sm hover:bg-white/90 transition">
+                Get started
+              </button>
+            </Link>
+          </div>
         </div>
       </nav>
 
-      {/* --- SUPERCHARGED HERO SECTION --- */}
-      <section className="relative w-full max-w-7xl mx-auto px-6 pt-20 pb-32 flex flex-col items-center justify-center min-h-[80vh] text-center">
-        
-        {/* Floating elements from the reference image */}
-        <motion.div 
-          animate={{ y: [0, -15, 0] }}
-          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute left-[5%] md:left-[15%] top-1/4 hidden lg:block"
+      {/* Hero Section */}
+      <section className="min-h-screen flex items-center justify-center px-6 pt-20">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
+          className="text-center max-w-4xl"
         >
-          <div className="bg-slate-800/80 backdrop-blur-md border border-white/10 px-4 py-2 rounded-2xl rounded-br-none shadow-2xl relative mb-4">
-            <p className="text-sm">Hello AI!</p>
+          <motion.div
+            variants={fadeInUp}
+            initial="initial"
+            animate="animate"
+            className="mb-8"
+          >
+            <span className="inline-block px-4 py-2 rounded-full bg-white/10 border border-white/20 text-sm font-medium text-white/80">
+              The future of document intelligence
+            </span>
+          </motion.div>
+
+          <motion.h1
+            variants={fadeInUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.1 }}
+            className="text-6xl md:text-7xl font-bold leading-tight mb-6"
+          >
+            Chat with your documents
+            <br />
+            <span className="text-white/60">in seconds</span>
+          </motion.h1>
+
+          <motion.p
+            variants={fadeInUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.2 }}
+            className="text-xl text-white/60 mb-12 max-w-2xl mx-auto"
+          >
+            Upload PDFs and ask questions. Our AI reads your documents intelligently and answers with precision.
+          </motion.p>
+
+          <motion.div
+            variants={fadeInUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.3 }}
+            className="flex flex-col sm:flex-row gap-4 justify-center"
+          >
+            <Link href="/auth/register">
+              <button className="bg-white text-black px-8 py-4 rounded-lg font-semibold hover:bg-white/90 transition flex items-center justify-center gap-2 group">
+                Start free trial
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </button>
+            </Link>
+            <button className="bg-white/10 text-white px-8 py-4 rounded-lg font-semibold hover:bg-white/20 transition border border-white/20">
+              Watch demo
+            </button>
+          </motion.div>
+
+          {/* Stats */}
+          <motion.div
+            variants={fadeInUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.4 }}
+            className="grid grid-cols-3 gap-8 mt-24 pt-12 border-t border-white/10"
+          >
+            <div>
+              <div className="text-3xl font-bold">10k+</div>
+              <div className="text-white/60 text-sm mt-2">Users worldwide</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold">99%</div>
+              <div className="text-white/60 text-sm mt-2">Accuracy rate</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold">&lt;1s</div>
+              <div className="text-white/60 text-sm mt-2">Response time</div>
+            </div>
+          </motion.div>
+        </motion.div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-24 px-6 border-t border-white/10">
+        <div className="max-w-7xl mx-auto">
+          <motion.h2
+            variants={fadeInUp}
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+            className="text-4xl md:text-5xl font-bold text-center mb-16"
+          >
+            Everything you need
+          </motion.h2>
+
+          <div className="grid md:grid-cols-2 gap-12">
+            {[
+              {
+                icon: Zap,
+                title: 'Lightning fast',
+                description: 'Get answers in milliseconds with our optimized vector search engine'
+              },
+              {
+                icon: Shield,
+                title: 'Secure & private',
+                description: 'Your documents stay on your device. End-to-end encryption'
+              },
+              {
+                icon: BarChart3,
+                title: 'Analytics included',
+                description: 'Track queries, understand patterns, and optimize your workflow'
+              },
+              {
+                icon: MessageSquare,
+                title: 'Natural language',
+                description: 'Ask questions in plain English just like talking to a colleague'
+              }
+            ].map((feature, i) => (
+              <motion.div
+                key={i}
+                variants={fadeInUp}
+                initial="initial"
+                whileInView="animate"
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="p-8 rounded-xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition"
+              >
+                <feature.icon className="w-8 h-8 mb-4 text-white" />
+                <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
+                <p className="text-white/60">{feature.description}</p>
+              </motion.div>
+            ))}
           </div>
-          {/* Note: In a real prod environment we'd use external optimized images. */}
-          <div className="relative w-48 h-48 opacity-90 hover:opacity-100 transition-opacity">
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="py-24 px-6 border-t border-white/10">
+        <div className="max-w-7xl mx-auto">
+          <motion.h2
+            variants={fadeInUp}
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+            className="text-4xl md:text-5xl font-bold text-center mb-16"
+          >
+            How it works
+          </motion.h2>
+
+          <div className="grid md:grid-cols-3 gap-12">
+            {[
+              {
+                step: '01',
+                title: 'Upload',
+                description: 'Drag and drop your PDFs. We handle the rest.'
+              },
+              {
+                step: '02',
+                title: 'Ask',
+                description: 'Type your questions in natural language'
+              },
+              {
+                step: '03',
+                title: 'Get answers',
+                description: 'AI extracts relevant information instantly'
+              }
+            ].map((item, i) => (
+              <motion.div
+                key={i}
+                variants={fadeInUp}
+                initial="initial"
+                whileInView="animate"
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="text-center"
+              >
+                <div className="text-5xl font-bold text-white/20 mb-4">{item.step}</div>
+                <h3 className="text-2xl font-bold mb-3">{item.title}</h3>
+                <p className="text-white/60">{item.description}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section className="py-24 px-6 border-t border-white/10">
+        <div className="max-w-7xl mx-auto">
+          <motion.h2
+            variants={fadeInUp}
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+            className="text-4xl md:text-5xl font-bold text-center mb-16"
+          >
+            Simple pricing
+          </motion.h2>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                name: 'Starter',
+                price: 'Free',
+                desc: 'Perfect for trying us out',
+                features: ['Up to 5 PDFs', '100 messages/month', 'Basic support']
+              },
+              {
+                name: 'Pro',
+                price: '$29/mo',
+                desc: 'For power users',
+                features: ['Unlimited PDFs', 'Unlimited messages', 'Email support', 'Query analytics'],
+                highlighted: true
+              },
+              {
+                name: 'Enterprise',
+                price: 'Custom',
+                desc: 'For teams',
+                features: ['Everything in Pro', 'SSO & SCIM', 'Advanced security', 'Dedicated support']
+              }
+            ].map((plan, i) => (
+              <motion.div
+                key={i}
+                variants={fadeInUp}
+                initial="initial"
+                whileInView="animate"
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className={`p-8 rounded-xl border transition ${
+                  plan.highlighted
+                    ? 'bg-white text-black border-white'
+                    : 'bg-white/[0.02] border-white/10 hover:border-white/20'
+                }`}
+              >
+                <h3 className="text-xl font-bold mb-1">{plan.name}</h3>
+                <p className={plan.highlighted ? 'text-black/60 text-sm mb-4' : 'text-white/60 text-sm mb-4'}>{plan.desc}</p>
+                <div className="text-3xl font-bold mb-6">{plan.price}</div>
+                <ul className="space-y-3 mb-8">
+                  {plan.features.map((feature, j) => (
+                    <li key={j} className="flex items-center gap-3">
+                      <CheckCircle className="w-5 h-5" />
+                      <span className="text-sm">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <button className={`w-full py-2.5 rounded-lg font-semibold transition ${
+                  plan.highlighted
+                    ? 'bg-black text-white hover:bg-white/20'
+                    : 'bg-white/10 text-white hover:bg-white/20 border border-white/20'
+                }`}>
+                  Get started
+                </button>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-24 px-6 border-t border-white/10">
+        <motion.div
+          variants={fadeInUp}
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true }}
+          className="max-w-2xl mx-auto text-center"
+        >
+          <h2 className="text-4xl md:text-5xl font-bold mb-6">Ready to get started?</h2>
+          <p className="text-white/60 text-lg mb-8">Join thousands of users who are already using DocuMind</p>
+          <Link href="/auth/register">
+            <button className="bg-white text-black px-8 py-4 rounded-lg font-semibold hover:bg-white/90 transition">
+              Start free trial
+            </button>
+          </Link>
+        </motion.div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-white/10 py-12 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-4 gap-12 mb-8">
+            <div>
+              <div className="text-lg font-bold mb-4">DocuMind</div>
+              <p className="text-white/60 text-sm">Chat with your PDFs</p>
+            </div>
+            <div>
+              <div className="font-semibold mb-4">Product</div>
+              <ul className="space-y-2 text-white/60 text-sm">
+                <li><button className="hover:text-white transition">Features</button></li>
+                <li><button className="hover:text-white transition">Pricing</button></li>
+                <li><button className="hover:text-white transition">Security</button></li>
+              </ul>
+            </div>
+            <div>
+              <div className="font-semibold mb-4">Company</div>
+              <ul className="space-y-2 text-white/60 text-sm">
+                <li><button className="hover:text-white transition">About</button></li>
+                <li><button className="hover:text-white transition">Blog</button></li>
+                <li><button className="hover:text-white transition">Contact</button></li>
+              </ul>
+            </div>
+            <div>
+              <div className="font-semibold mb-4">Legal</div>
+              <ul className="space-y-2 text-white/60 text-sm">
+                <li><button className="hover:text-white transition">Privacy</button></li>
+                <li><button className="hover:text-white transition">Terms</button></li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="border-t border-white/10 pt-8 flex items-center justify-between">
+            <p className="text-white/60 text-sm">© 2024 DocuMind. All rights reserved.</p>
+            <div className="flex items-center gap-4">
+              <Github className="w-5 h-5 text-white/60 hover:text-white cursor-pointer transition" />
+              <Twitter className="w-5 h-5 text-white/60 hover:text-white cursor-pointer transition" />
+              <Mail className="w-5 h-5 text-white/60 hover:text-white cursor-pointer transition" />
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
+      
+      {/* Intense Glowing Orbs Background */}
+      <div className="fixed top-[-20%] left-[-10%] w-[800px] h-[800px] bg-indigo-600/20 blur-[150px] rounded-full pointer-events-none"></div>
+      <div className="fixed bottom-[-20%] right-[-10%] w-[800px] h-[800px] bg-purple-600/20 blur-[150px] rounded-full pointer-events-none"></div>
+
+      {/* --- TOP NAVIGATION --- */}
+      <nav className="w-full max-w-7xl mx-auto px-6 py-6 flex items-center justify-between relative z-20">
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3">
+          <div className="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-2.5 rounded-2xl shadow-[0_0_20px_rgba(99,102,241,0.4)]">
+            <MessageSquare size={22} className="text-white fill-white/20" />
+          </div>
+          <span className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-white/70">
+            VaatBot<span className="text-indigo-500">.</span>
+          </span>
+        </motion.div>
+        
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="hidden md:flex items-center gap-10 text-sm font-semibold tracking-wide text-slate-300">
+          <button className="text-white relative after:content-[''] after:absolute after:-bottom-2 after:left-0 after:w-full after:h-[2px] after:bg-indigo-500 after:rounded-full">Home</button>
+          <button className="hover:text-white transition-colors">Platform</button>
+          <button className="hover:text-white transition-colors">Pricing</button>
+          <button className="hover:text-white transition-colors">Enterprise</button>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-6 text-sm font-bold">
+          <button className="hidden sm:block text-slate-300 hover:text-white transition-colors">Log in</button>
+          <button className="bg-white hover:bg-slate-100 text-slate-900 px-7 py-3 rounded-full shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:shadow-[0_0_40px_rgba(255,255,255,0.4)] transition-all transform hover:-translate-y-0.5 relative group overflow-hidden">
+            <span className="relative z-10 flex items-center gap-2">Book a call</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent -translate-x-full group-hover:animate-[shimmer_1s_infinite]"></div>
+          </button>
+        </motion.div>
+      </nav>
+
+      {/* --- HERO SECTION --- */}
+      <section className="relative w-full max-w-7xl mx-auto px-6 pt-24 pb-40 flex flex-col items-center min-h-[85vh] text-center mt-10">
+        
+        {/* Floating Avatars */}
+        <motion.div 
+          animate={{ y: [0, -20, 0], rotate: [0, -2, 0] }}
+          transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute left-[3%] lg:left-[10%] top-1/4 hidden lg:flex flex-col items-center"
+        >
+          <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 }} className="bg-slate-800/80 backdrop-blur-xl border border-white/10 px-5 py-3 rounded-3xl rounded-br-none shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] relative mb-6">
+            <p className="text-sm font-semibold text-emerald-300 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Hello AI!
+            </p>
+          </motion.div>
+          <div className="relative w-64 h-64 drop-shadow-[0_20px_40px_rgba(0,0,0,0.6)]">
             <Image src="/hero_boy.png" alt="3D Boy" fill className="object-contain" />
           </div>
         </motion.div>
 
         <motion.div 
-          animate={{ y: [0, 20, 0] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-          className="absolute right-[5%] md:right-[15%] top-1/3 hidden lg:block"
+          animate={{ y: [0, 25, 0], rotate: [0, 2, 0] }}
+          transition={{ duration: 9, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+          className="absolute right-[3%] lg:right-[10%] top-1/3 hidden lg:flex flex-col items-center"
         >
-          <div className="bg-[#1a1c2e]/90 backdrop-blur-md border border-indigo-500/30 px-5 py-3 rounded-2xl rounded-bl-none shadow-[0_0_30px_rgba(79,70,229,0.2)] relative mb-4">
-            <p className="text-sm font-medium text-indigo-200">How can I help<br/>you today?</p>
-          </div>
-          <div className="relative w-56 h-56 transition-transform hover:scale-105">
+          <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.8 }} className="bg-[#1a1c2e]/90 backdrop-blur-xl border border-indigo-500/40 px-6 py-4 rounded-3xl rounded-bl-none shadow-[0_20px_40px_-10px_rgba(99,102,241,0.3)] relative mb-6">
+            <p className="text-sm font-semibold text-indigo-200">How can I help<br/>you today?</p>
+          </motion.div>
+          <div className="relative w-72 h-72 drop-shadow-[0_20px_40px_rgba(0,0,0,0.6)]">
             <Image src="/hero_robot.png" alt="3D Robot" fill className="object-contain" />
           </div>
         </motion.div>
 
-        {/* Hero Text Content */}
+        {/* Hero Content */}
         <motion.div 
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative z-10 max-w-3xl flex flex-col items-center"
+          initial={{ opacity: 0, y: 40, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.8, type: "spring" }}
+          className="relative z-10 max-w-4xl flex flex-col items-center"
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-slate-300 mb-8">
-            <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
-            AI Assistant
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs font-bold uppercase tracking-widest text-indigo-300 mb-10 shadow-[0_0_20px_rgba(99,102,241,0.2)]">
+            <Sparkles size={14} className="text-indigo-400" /> Version 2.0 Access
           </div>
           
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.1] mb-6">
-            Supercharge Your Team with <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">
-              AI Conversations
-            </span>
+          <h1 className="text-6xl md:text-[5.5rem] font-black tracking-tight leading-[1.05] mb-8">
+            Supercharge Your Team <br className="hidden md:block"/> with <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400">AI Conversations</span>
           </h1>
           
-          <p className="text-lg md:text-xl text-slate-400 max-w-2xl mb-10 leading-relaxed">
-            From raw customer documents to insightful lead generation — automate it all by 
-            chatting directly with your custom PDF knowledge base.
+          <p className="text-xl md:text-2xl text-slate-400 max-w-2xl mb-14 leading-relaxed font-medium">
+            From customer service to lead generation — pipeline your raw PDFs directly into an intelligent LLM interface.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center gap-4">
-            <button 
-              onClick={scrollToChat}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-full font-medium transition-all shadow-[0_0_20px_rgba(79,70,229,0.4)] flex items-center gap-2"
-            >
-              Get Started Free <ArrowRight size={18} />
+          <div className="flex flex-col sm:flex-row items-center gap-6">
+            <button onClick={scrollToChat} className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white px-10 py-5 rounded-full font-bold text-lg transition-all shadow-[0_20px_40px_-10px_rgba(99,102,241,0.6)] transform hover:-translate-y-1 flex items-center gap-3 relative group">
+              <span className="relative z-10">Get Started Free</span> 
+              <ArrowRight size={20} className="relative z-10 group-hover:translate-x-1 transition-transform" />
             </button>
-            <button className="bg-white/5 hover:bg-white/10 ring-1 ring-white/10 text-white px-8 py-4 rounded-full font-medium transition-all flex items-center gap-2">
-              <Rocket size={18} className="text-purple-400" /> See Demo
+            <button className="bg-white/[0.03] hover:bg-white/[0.08] backdrop-blur-sm border border-white/10 text-white px-10 py-5 rounded-full font-bold text-lg transition-all flex items-center gap-3">
+              See Live Demo
             </button>
           </div>
         </motion.div>
       </section>
 
-      {/* --- LOGO STRIP --- */}
-      <section className="w-full border-y border-white/5 bg-white/[0.02] py-10 relative z-10">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <p className="text-indigo-400/80 text-sm font-bold tracking-[0.2em] uppercase mb-8">Trusted by leading companies</p>
-          <div className="flex flex-wrap justify-center items-center gap-x-12 gap-y-8 opacity-50 grayscale hover:grayscale-0 transition-all duration-700">
-            {/* Fallback to text if logos aren't available, but styled nicely */}
-            <h3 className="font-bold text-2xl tracking-tighter">PayPal</h3>
-            <h3 className="font-bold text-2xl tracking-tighter italic">yahoo!</h3>
-            <h3 className="font-bold text-2xl tracking-tight">Lenovo</h3>
-            <h3 className="font-serif font-bold text-2xl">Canon</h3>
-            <h3 className="font-bold text-2xl flex items-center gap-1"><div className="w-4 h-4 bg-sky-500 rounded-full"></div>zoom</h3>
-            <h3 className="font-medium text-2xl">Google</h3>
-          </div>
+      {/* --- INFINITE TRUSTED LOGOS --- */}
+      <section className="w-full border-y border-white/10 bg-[#080B1A]/80 backdrop-blur-sm py-12 relative z-10 overflow-hidden">
+        <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-[#030614] to-transparent z-10"></div>
+        <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-[#030614] to-transparent z-10"></div>
+        
+        <div className="flex w-[200%] animate-marquee opacity-40 hover:opacity-80 transition-opacity duration-500">
+          {logos.map((logo, i) => (
+            <div key={i} className="flex-1 flex items-center justify-center px-12 shrink-0 w-64">
+              <span className="text-3xl font-black tracking-tight uppercase text-transparent bg-clip-text bg-gradient-to-b from-white to-white/20">
+                {logo}
+              </span>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* --- THE RAG APPLICATION SECTION --- */}
-      <section ref={chatSectionRef} className="max-w-7xl mx-auto px-6 py-32 relative z-10">
+      {/* --- RAG APPLICATION PLATFORM --- */}
+      <section ref={chatSectionRef} className="max-w-[90rem] mx-auto px-6 py-40 relative z-10">
         
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-5xl font-bold mb-4">Transform Your Business</h2>
-          <p className="text-slate-400 max-w-2xl mx-auto">Upload a massive PDF and watch our backend orchestrate embeddings locally, delivering precision answers instantly.</p>
+        <div className="text-center mb-20">
+          <h2 className="text-4xl md:text-6xl font-black mb-6">Smart Chat Experience</h2>
+          <p className="text-xl text-slate-400 max-w-3xl mx-auto font-medium">Inject your corporate data into our secure pipeline and let LangChain handle the vector math instantly.</p>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-8 bg-slate-900/40 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-4 shadow-2xl">
-          
-          {/* L: Upload Pane */}
-          <div className="w-full lg:w-1/3 p-6 bg-white/[0.02] rounded-[1.5rem] border border-white/5 flex flex-col">
-            <h3 className="font-semibold text-xl mb-2 flex items-center gap-2">
-              <File className="text-indigo-400" /> Knowledge Base
-            </h3>
-            <p className="text-sm text-slate-400 mb-8">Inject data into the pipeline.</p>
+        {/* Glossy Wrapper around the RAG tool */}
+        <div className="p-[2px] bg-gradient-to-br from-indigo-500/30 via-slate-800 to-purple-500/30 rounded-[2.5rem] shadow-[0_0_100px_rgba(99,102,241,0.15)] relative">
+          <div className="absolute -top-10 -right-10 w-40 h-40 bg-purple-500/30 blur-3xl"></div>
+          <div className="flex flex-col lg:flex-row gap-0 bg-[#0A0D1E] rounded-[2.5rem] overflow-hidden">
             
-            <input type="file" id="pdf-upload" accept="application/pdf" className="hidden" onChange={handleFileChange} />
-            <label 
-              htmlFor="pdf-upload"
-              className="group flex-1 min-h-[250px] border-2 border-dashed border-white/10 hover:border-indigo-500/50 hover:bg-indigo-500/5 transition-all rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer text-center mb-6"
-            >
-              <UploadCloud size={48} className="text-slate-600 group-hover:text-indigo-400 transition-colors mb-4" />
-              <p className="font-medium text-slate-300">{file ? file.name : "Select a PDF document"}</p>
-              <p className="text-xs text-slate-500 mt-2">Maximum file size: 50MB</p>
-            </label>
+            {/* L: Upload Sidebar */}
+            <div className="w-full lg:w-[400px] bg-white/[0.02] border-r border-white/5 flex flex-col p-8 dot-grid relative">
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0A0D1E] pointer-events-none"></div>
+              
+              <div className="relative z-10">
+                <h3 className="font-bold text-2xl mb-3 flex items-center gap-3">
+                  <div className="p-2 bg-indigo-500/20 rounded-lg"><File className="text-indigo-400" size={24} /></div> Document Vault
+                </h3>
+                <p className="text-base text-slate-400 mb-10 leading-relaxed">Establish your context constraints. Select a high-density PDF payload.</p>
+                
+                <input type="file" id="pdf-upload" accept="application/pdf" className="hidden" onChange={handleFileChange} />
+                <label 
+                  htmlFor="pdf-upload"
+                  className="group flex flex-col min-h-[300px] border-2 border-dashed border-indigo-500/20 hover:border-indigo-400 bg-indigo-500/[0.02] hover:bg-indigo-500/10 transition-all duration-300 rounded-[2rem] p-10 items-center justify-center cursor-pointer text-center mb-8 shadow-inner"
+                >
+                  <div className="w-20 h-20 bg-indigo-500/10 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500 group-hover:bg-indigo-500/20">
+                    <UploadCloud size={32} className="text-indigo-400" />
+                  </div>
+                  <p className="font-bold text-lg text-slate-200 mb-2">{file ? file.name : "Drag & Drop PDF"}</p>
+                  <p className="text-sm text-slate-500">Supports encrypted .pdf up to 50MB</p>
+                </label>
 
-            <button 
-              onClick={handleUpload}
-              disabled={!file || isUploading || uploadSuccess}
-              className={`w-full py-4 rounded-xl font-medium transition-all shadow-lg flex items-center justify-center gap-2 ${
-                uploadSuccess 
-                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
-                  : !file 
-                    ? "bg-slate-800 text-slate-500 cursor-not-allowed" 
-                    : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/25"
-              }`}
-            >
-              {isUploading && <Loader2 size={18} className="animate-spin" />}
-              {uploadSuccess && <CheckCircle2 size={18} />}
-              {isUploading ? "Vectorizing..." : uploadSuccess ? "Pipeline Active" : "Process Document"}
-            </button>
-          </div>
-
-          {/* R: Chat Pane */}
-          <div className="flex-1 flex flex-col h-[600px] bg-[#0A0F1C] rounded-[1.5rem] border border-white/5 relative overflow-hidden">
-            
-            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] pointer-events-none"></div>
-
-            {/* Chat header */}
-            <div className="p-5 border-b border-white/5 flex items-center gap-3 bg-white/[0.01]">
-              <div className={`w-3 h-3 rounded-full ${uploadSuccess ? 'bg-emerald-500 shadow-[0_0_10px_#10b981]' : 'bg-rose-500'}`}></div>
-              <span className="font-medium text-sm text-slate-300">
-                {uploadSuccess ? "OpenRouter Link Established" : "Awaiting Context Initialization"}
-              </span>
+                <button 
+                  onClick={handleUpload}
+                  disabled={!file || isUploading || uploadSuccess}
+                  className={`w-full py-5 rounded-2xl font-bold text-lg transition-all shadow-xl flex items-center justify-center gap-3 ${
+                    uploadSuccess 
+                      ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.1)]" 
+                      : !file 
+                        ? "bg-slate-800/50 text-slate-600 cursor-not-allowed" 
+                        : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_15px_30px_-10px_rgba(99,102,241,0.5)] transform hover:-translate-y-1"
+                  }`}
+                >
+                  {isUploading && <Loader2 size={22} className="animate-spin" />}
+                  {uploadSuccess && <CheckCircle2 size={22} />}
+                  {isUploading ? "Vectorizing Payload..." : uploadSuccess ? "Context Initialized" : "Process Payload"}
+                </button>
+              </div>
             </div>
 
-            {/* Chat History */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth">
-              <AnimatePresence>
-                {messages.length === 0 && !uploadSuccess && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full flex flex-col items-center justify-center text-slate-500 gap-4 opacity-50">
-                    <Bot size={56} className="text-indigo-400/50" />
-                    <p className="text-center font-medium">No document detected.<br/>Please upload context to begin.</p>
+            {/* R: Chat Engine */}
+            <div className="flex-1 flex flex-col h-[800px] lg:h-auto bg-[#0A0D1E] relative">
+              
+              {/* Header */}
+              <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-white/[0.01]">
+                <div className="flex items-center gap-4">
+                  <div className="relative flex items-center justify-center">
+                    <div className={`w-4 h-4 rounded-full ${uploadSuccess ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+                    {uploadSuccess && <div className="absolute inset-0 bg-emerald-500 blur-sm animate-pulse"></div>}
+                  </div>
+                  <span className="font-bold tracking-wide text-slate-200">
+                    {uploadSuccess ? "LLM Node: ONLINE" : "Awaiting Context..."}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <div className="w-3 h-3 rounded-full bg-white/10"></div>
+                  <div className="w-3 h-3 rounded-full bg-white/10"></div>
+                  <div className="w-3 h-3 rounded-full bg-white/10"></div>
+                </div>
+              </div>
+
+              {/* Chat Viewport */}
+              <div className="flex-1 overflow-y-auto p-8 space-y-8 scroll-smooth">
+                <AnimatePresence>
+                  {messages.length === 0 && !uploadSuccess && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full flex flex-col items-center justify-center text-slate-500 gap-6">
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-indigo-500 blur-[50px] opacity-20"></div>
+                        <Bot size={80} className="text-indigo-400/40 relative z-10" />
+                      </div>
+                      <p className="text-center font-bold text-xl tracking-tight text-slate-600">Terminal awaiting input.<br/>Upload context to begin simulation.</p>
+                    </motion.div>
+                  )}
+
+                  {messages.map((msg) => (
+                    <motion.div
+                      key={msg.id}
+                      initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      className={`flex gap-5 w-full ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
+                    >
+                      <div className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl ${
+                        msg.role === "user" ? "bg-gradient-to-br from-indigo-500 to-purple-600" : "bg-slate-800 border border-white/10"
+                      }`}>
+                        {msg.role === "user" ? <User size={22} className="text-white" /> : <Bot size={22} className="text-indigo-300" />}
+                      </div>
+
+                      <div className={`p-6 text-base leading-relaxed font-medium bg-white/[0.02] border border-white/5 shadow-2xl rounded-3xl ${
+                        msg.role === "user" 
+                          ? "bg-indigo-600/10 border-indigo-500/20 text-indigo-50 rounded-tr-sm max-w-[80%]" 
+                          : "text-slate-200 rounded-tl-sm max-w-[90%]"
+                      }`}>
+                        {msg.content}
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+                
+                {isTyping && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-5">
+                    <div className="shrink-0 w-12 h-12 rounded-2xl bg-slate-800 border border-white/10 flex items-center justify-center">
+                      <Bot size={22} className="text-indigo-300" />
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/5 rounded-3xl rounded-tl-sm p-6 flex gap-2 items-center">
+                      <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                      <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                      <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                    </div>
                   </motion.div>
                 )}
+                <div ref={chatEndRef} className="h-4" />
+              </div>
 
-                {messages.map((msg) => (
-                  <motion.div
-                    key={msg.id}
-                    initial={{ opacity: 0, y: 15, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    className={`flex gap-4 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
+              {/* Input Core */}
+              <div className="p-6 bg-white/[0.01] border-t border-white/5 backdrop-blur-md">
+                <form onSubmit={handleSendMessage} className="relative flex items-center">
+                  <input 
+                    type="text" 
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    placeholder={uploadSuccess ? "Transmit query to LLM..." : "Input disabled."}
+                    disabled={!uploadSuccess || isTyping}
+                    className="w-full bg-[#030614] border border-white/10 rounded-2xl py-5 pl-6 pr-20 outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10 transition-all disabled:opacity-50 text-base font-medium shadow-inner"
+                  />
+                  <button 
+                    type="submit"
+                    disabled={!inputValue.trim() || !uploadSuccess || isTyping}
+                    className="absolute right-3 p-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white rounded-xl transition-all shadow-[0_0_20px_rgba(99,102,241,0.3)] disabled:shadow-none"
                   >
-                    <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg ${
-                      msg.role === "user" ? "bg-indigo-600" : "bg-slate-800 ring-1 ring-white/10"
-                    }`}>
-                      {msg.role === "user" ? <User size={18} /> : <Bot size={18} className="text-indigo-300" />}
-                    </div>
-
-                    <div className={`max-w-[80%] p-4 text-sm leading-relaxed ${
-                      msg.role === "user" 
-                        ? "bg-indigo-600/10 border border-indigo-500/20 text-indigo-100 rounded-2xl rounded-tr-sm" 
-                        : "bg-white/[0.03] border border-white/5 text-slate-300 rounded-2xl rounded-tl-sm shadow-xl"
-                    }`}>
-                      {msg.content}
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-              
-              {isTyping && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-4">
-                  <div className="shrink-0 w-10 h-10 rounded-xl bg-slate-800 ring-1 ring-white/10 flex items-center justify-center">
-                    <Bot size={18} className="text-indigo-300" />
-                  </div>
-                  <div className="bg-white/[0.03] border border-white/5 rounded-2xl rounded-tl-sm p-4 flex gap-1.5 items-center">
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '300ms' }}></span>
-                  </div>
-                </motion.div>
-              )}
-              <div ref={chatEndRef} />
+                    <Send size={20} className={inputValue.trim() && uploadSuccess ? "translate-x-1" : ""} />
+                  </button>
+                </form>
+              </div>
             </div>
 
-            {/* Input Form */}
-            <div className="p-4 bg-white/[0.01] border-t border-white/5 relative z-10">
-              <form onSubmit={handleSendMessage} className="relative flex items-center group">
-                <input 
-                  type="text" 
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  placeholder={uploadSuccess ? "Ask a question..." : "System locked."}
-                  disabled={!uploadSuccess || isTyping}
-                  className="w-full bg-slate-900/50 hover:bg-slate-900 focus:bg-slate-900 border border-white/10 rounded-xl py-4 pl-5 pr-14 outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all disabled:opacity-50 text-sm"
-                />
-                <button 
-                  type="submit"
-                  disabled={!inputValue.trim() || !uploadSuccess || isTyping}
-                  className="absolute right-2 p-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white rounded-[0.6rem] transition-all disabled:text-slate-600"
-                >
-                  <Send size={18} className={inputValue.trim() && uploadSuccess ? "translate-x-0.5" : ""} />
-                </button>
-              </form>
-            </div>
           </div>
         </div>
       </section>

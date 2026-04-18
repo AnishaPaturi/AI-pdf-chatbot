@@ -7,3 +7,8 @@ langchain-openai
 chromadb
 pypdf
 python-dotenv
+sqlalchemy
+pydantic[email]
+python-jose[cryptography]
+passlib[bcrypt]
+pyjwt
