@@ -1,59 +1,49 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { UploadCloud, MessageSquare, Send, File, CheckCircle2, Loader2, Bot, User } from "lucide-react";
+import { UploadCloud, MessageSquare, Send, File, CheckCircle2, Loader2, Bot, User, ArrowRight, Rocket } from "lucide-react";
 
-// --- Types ---
-// Defining our message structure so TypeScript can help us catch errors!
 type Message = {
   id: string;
   role: "user" | "bot";
   content: string;
 };
 
-export default function ChatbotPage() {
-  // --- State Hooks ---
-  // Keeping track of our file state
+export default function LandingPage() {
+  // --- RAG State ---
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
-
-  // Chat state
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-
-  // A nifty ref to auto-scroll to the bottom of the chat when new messages arrive
   const chatEndRef = useRef<HTMLDivElement>(null);
+  
+  // Ref for smooth scrolling down to the chat interface
+  const chatSectionRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll effect
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   // --- Handlers ---
-
-  // Handle when the user selects a file from their computer
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
-      setUploadSuccess(false); // Reset success state if they pick a new file
+      setUploadSuccess(false);
     }
   };
 
-  // Upload the file to our Python FastAPI backend
   const handleUpload = async () => {
     if (!file) return;
-
     setIsUploading(true);
     
-    // We use FormData to send files via POST requests
     const formData = new FormData();
     formData.append("file", file);
 
     try {
-      // Connect to our FastAPI backend running on port 8000
       const response = await fetch("http://localhost:8000/upload", {
         method: "POST",
         body: formData,
@@ -61,14 +51,17 @@ export default function ChatbotPage() {
 
       if (response.ok) {
         setUploadSuccess(true);
-        // Add a friendly greeting message from the bot once the file is ready!
         setMessages([
           {
             id: Date.now().toString(),
             role: "bot",
-            content: `I've successfully processed "${file.name}". What would you like to know about it?`,
+            content: `Document secured. Let's delve into "${file.name}". What's your inquiry?`,
           },
         ]);
+        // Scroll down slightly so they focus on the chat
+        setTimeout(() => {
+          chatSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 500);
       } else {
         const errorData = await response.json();
         alert(`Upload failed: ${errorData.detail}`);
@@ -81,24 +74,19 @@ export default function ChatbotPage() {
     }
   };
 
-  // Handle sending a message to the backend
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim() || !uploadSuccess) return;
 
-    // Immediately add the user's message to the UI
     const newUserMsg: Message = { id: Date.now().toString(), role: "user", content: inputValue };
     setMessages((prev) => [...prev, newUserMsg]);
     setInputValue("");
     setIsTyping(true);
 
     try {
-      // Send the query to the FastAPI /chat endpoint
       const response = await fetch("http://localhost:8000/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: newUserMsg.content }),
       });
 
@@ -108,192 +96,271 @@ export default function ChatbotPage() {
         setMessages((prev) => [...prev, newBotMsg]);
       } else {
         const errorData = await response.json();
-        const errorMsg: Message = { id: (Date.now() + 1).toString(), role: "bot", content: `Error: ${errorData.detail}` };
-        setMessages((prev) => [...prev, errorMsg]);
+        setMessages((prev) => [...prev, { id: Date.now().toString(), role: "bot", content: `Error: ${errorData.detail}` }]);
       }
     } catch (error) {
-      console.error("Error sending message:", error);
-      const errorMsg: Message = { id: (Date.now() + 1).toString(), role: "bot", content: "Sorry, I couldn't connect to the server." };
-      setMessages((prev) => [...prev, errorMsg]);
+      setMessages((prev) => [...prev, { id: Date.now().toString(), role: "bot", content: "Connection Error: Is the API running?" }]);
     } finally {
       setIsTyping(false);
     }
   };
 
-  // --- Render ---
+  const scrollToChat = () => chatSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+
   return (
-    <main className="min-h-screen p-4 md:p-8 flex flex-col md:flex-row gap-6 max-w-7xl mx-auto text-slate-100">
-      
-      {/* LEFT COLUMN: Logo & File Upload box */}
-      <div className="w-full md:w-1/3 flex flex-col gap-6">
-        
-        {/* Header/Branding */}
-        <motion.div 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-slate-800/50 backdrop-blur-xl border border-white/10 p-6 rounded-3xl"
-        >
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-3 bg-blue-500/20 rounded-xl text-blue-400">
-              <MessageSquare size={28} />
-            </div>
-            <h1 className="text-2xl font-bold bg-gradient-to-br from-white to-slate-400 bg-clip-text text-transparent">
-              DocuMind
-            </h1>
-          </div>
-          <p className="text-slate-400 text-sm">
-            Chat with your PDFs using OpenRouter AI.
-          </p>
-        </motion.div>
-
-        {/* Upload Container */}
-        <motion.div 
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-slate-800/50 backdrop-blur-xl border border-white/10 p-6 rounded-3xl flex-col flex gap-4"
-        >
-          <h2 className="font-semibold text-lg flex items-center gap-2">
-            <File size={20} className="text-slate-400"/> Context Upload
-          </h2>
-          
-          {/* Custom hidden file input triggered by the label underneath */}
-          <input 
-            type="file" 
-            id="pdf-upload" 
-            accept="application/pdf" 
-            className="hidden" 
-            onChange={handleFileChange}
-          />
-          
-          {/* Drag & Drop style area */}
-          <label 
-            htmlFor="pdf-upload"
-            className="group border-2 border-dashed border-white/20 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer text-center"
-          >
-            <UploadCloud size={40} className="text-slate-500 group-hover:text-blue-400 transition-colors mb-3" />
-            <p className="text-sm font-medium text-slate-300">
-              {file ? file.name : "Click to browse PDFs"}
-            </p>
-            <p className="text-xs text-slate-500 mt-1">
-              Supports .pdf up to 50MB
-            </p>
-          </label>
-
-          {/* Upload Action Button */}
-          <button 
-            onClick={handleUpload}
-            disabled={!file || isUploading || uploadSuccess}
-            className={`w-full py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
-              uploadSuccess 
-                ? "bg-green-500/20 text-green-400 border border-green-500/30" 
-                : !file 
-                  ? "bg-slate-700/50 text-slate-500 cursor-not-allowed" 
-                  : "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20"
-            }`}
-          >
-            {isUploading && <Loader2 size={18} className="animate-spin" />}
-            {uploadSuccess && <CheckCircle2 size={18} />}
-            {isUploading ? "Processing PDF..." : uploadSuccess ? "Ready to Chat!" : "Upload Document"}
-          </button>
-        </motion.div>
+    <div className="min-h-screen text-slate-100 font-sans selection:bg-indigo-500/30 overflow-x-hidden relative">
+      {/* 
+        PREMIUM BACKGROUND 
+        Starry deep space simulation via complex radial gradients
+      */}
+      <div className="fixed inset-0 z-[-1] bg-[#050B14]">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-[#050B14] to-[#050B14]"></div>
+        {/* Subtle mesh glowing orb in the center */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-600/10 blur-[120px] rounded-full pointer-events-none"></div>
       </div>
 
-      {/* RIGHT COLUMN: The Chat Interface */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="flex-1 bg-slate-800/50 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden flex flex-col h-[85vh] md:h-auto"
-      >
-        {/* Chat Header */}
-        <div className="p-5 border-b border-white/10 bg-slate-900/40">
-          <h2 className="font-semibold flex items-center gap-3">
-            <div className={`w-2.5 h-2.5 rounded-full ${uploadSuccess ? 'bg-green-500 animate-pulse' : 'bg-slate-600'}`}></div>
-            {uploadSuccess ? "Secure Connection Established" : "Waiting for document..."}
-          </h2>
+      {/* --- NAVIGATION BAR --- */}
+      <nav className="w-full max-w-7xl mx-auto px-6 py-6 flex items-center justify-between relative z-20">
+        <div className="flex items-center gap-2">
+          <div className="bg-gradient-to-tr from-indigo-500 to-purple-500 p-2 rounded-xl">
+            <MessageSquare size={20} className="text-white" />
+          </div>
+          <span className="text-xl font-bold tracking-tight">VaatBot</span>
+        </div>
+        
+        {/* We hide links on very small screens for simplicity */}
+        <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
+          <button className="bg-indigo-600/20 text-indigo-400 px-4 py-1.5 rounded-full ring-1 ring-indigo-500/30 hover:bg-indigo-600/30 transition-all">Home</button>
+          <button className="hover:text-white transition-colors">About</button>
+          <button className="hover:text-white transition-colors">Services</button>
+          <button className="hover:text-white transition-colors">Pricing</button>
+          <button className="hover:text-white transition-colors">Blog</button>
+          <button className="hover:text-white transition-colors">Contact</button>
         </div>
 
-        {/* Chat Messages Area */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          <AnimatePresence>
-            {messages.length === 0 && !uploadSuccess && (
-              <motion.div 
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                className="h-full flex flex-col items-center justify-center text-slate-500 gap-4"
-              >
-                <Bot size={48} className="text-slate-700" />
-                <p>Upload a PDF to start analyzing it.</p>
-              </motion.div>
-            )}
-
-            {messages.map((msg) => (
-              <motion.div
-                key={msg.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`flex gap-4 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
-              >
-                {/* Avatar */}
-                <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg ${
-                  msg.role === "user" 
-                    ? "bg-blue-600 shadow-blue-500/20" 
-                    : "bg-purple-600 shadow-purple-500/20"
-                }`}>
-                  {msg.role === "user" ? <User size={20} /> : <Bot size={20} />}
-                </div>
-
-                {/* Message Bubble */}
-                <div className={`max-w-[80%] p-4 rounded-2xl ${
-                  msg.role === "user" 
-                    ? "bg-blue-600/10 border border-blue-500/20 text-slate-200 rounded-tr-sm" 
-                    : "bg-slate-700/30 border border-white/5 text-slate-300 rounded-tl-sm flex flex-col gap-2"
-                }`}>
-                  {msg.content}
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-          
-          {/* Typing Indicator */}
-          {isTyping && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-4">
-              <div className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg bg-purple-600 shadow-purple-500/20">
-                <Bot size={20} />
-              </div>
-              <div className="bg-slate-700/30 border border-white/5 rounded-2xl rounded-tl-sm p-4 flex gap-1.5 items-center">
-                <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '300ms' }}></span>
-              </div>
-            </motion.div>
-          )}
-          
-          <div ref={chatEndRef} />
+        <div className="flex items-center gap-4 text-sm font-medium">
+          <button className="hidden sm:block hover:text-white transition-colors bg-indigo-600 px-6 py-2.5 rounded-full shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_30px_rgba(79,70,229,0.5)]">
+            Login
+          </button>
+          <button className="ring-1 ring-white/20 hover:bg-white/5 px-6 py-2.5 rounded-full transition-all">
+            Book a call
+          </button>
         </div>
+      </nav>
 
-        {/* Input Area */}
-        <div className="p-4 border-t border-white/10 bg-slate-900/40">
-          <form onSubmit={handleSendMessage} className="relative flex items-center">
-            <input 
-              type="text" 
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder={uploadSuccess ? "Ask me anything about the PDF..." : "Please upload a document first"}
-              disabled={!uploadSuccess || isTyping}
-              className="w-full bg-slate-800/80 border border-white/10 rounded-2xl py-4 pl-5 pr-14 outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all disabled:opacity-50"
-            />
+      {/* --- SUPERCHARGED HERO SECTION --- */}
+      <section className="relative w-full max-w-7xl mx-auto px-6 pt-20 pb-32 flex flex-col items-center justify-center min-h-[80vh] text-center">
+        
+        {/* Floating elements from the reference image */}
+        <motion.div 
+          animate={{ y: [0, -15, 0] }}
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute left-[5%] md:left-[15%] top-1/4 hidden lg:block"
+        >
+          <div className="bg-slate-800/80 backdrop-blur-md border border-white/10 px-4 py-2 rounded-2xl rounded-br-none shadow-2xl relative mb-4">
+            <p className="text-sm">Hello AI!</p>
+          </div>
+          {/* Note: In a real prod environment we'd use external optimized images. */}
+          <div className="relative w-48 h-48 opacity-90 hover:opacity-100 transition-opacity">
+            <Image src="/hero_boy.png" alt="3D Boy" fill className="object-contain" />
+          </div>
+        </motion.div>
+
+        <motion.div 
+          animate={{ y: [0, 20, 0] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+          className="absolute right-[5%] md:right-[15%] top-1/3 hidden lg:block"
+        >
+          <div className="bg-[#1a1c2e]/90 backdrop-blur-md border border-indigo-500/30 px-5 py-3 rounded-2xl rounded-bl-none shadow-[0_0_30px_rgba(79,70,229,0.2)] relative mb-4">
+            <p className="text-sm font-medium text-indigo-200">How can I help<br/>you today?</p>
+          </div>
+          <div className="relative w-56 h-56 transition-transform hover:scale-105">
+            <Image src="/hero_robot.png" alt="3D Robot" fill className="object-contain" />
+          </div>
+        </motion.div>
+
+        {/* Hero Text Content */}
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative z-10 max-w-3xl flex flex-col items-center"
+        >
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-slate-300 mb-8">
+            <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+            AI Assistant
+          </div>
+          
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.1] mb-6">
+            Supercharge Your Team with <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">
+              AI Conversations
+            </span>
+          </h1>
+          
+          <p className="text-lg md:text-xl text-slate-400 max-w-2xl mb-10 leading-relaxed">
+            From raw customer documents to insightful lead generation — automate it all by 
+            chatting directly with your custom PDF knowledge base.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center gap-4">
             <button 
-              type="submit"
-              disabled={!inputValue.trim() || !uploadSuccess || isTyping}
-              className="absolute right-2 p-2.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white rounded-xl transition-all disabled:text-slate-500 disabled:cursor-not-allowed"
+              onClick={scrollToChat}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-full font-medium transition-all shadow-[0_0_20px_rgba(79,70,229,0.4)] flex items-center gap-2"
             >
-              <Send size={20} className={inputValue.trim() && uploadSuccess ? "translate-x-0.5" : ""} />
+              Get Started Free <ArrowRight size={18} />
             </button>
-          </form>
+            <button className="bg-white/5 hover:bg-white/10 ring-1 ring-white/10 text-white px-8 py-4 rounded-full font-medium transition-all flex items-center gap-2">
+              <Rocket size={18} className="text-purple-400" /> See Demo
+            </button>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* --- LOGO STRIP --- */}
+      <section className="w-full border-y border-white/5 bg-white/[0.02] py-10 relative z-10">
+        <div className="max-w-7xl mx-auto px-6 text-center">
+          <p className="text-indigo-400/80 text-sm font-bold tracking-[0.2em] uppercase mb-8">Trusted by leading companies</p>
+          <div className="flex flex-wrap justify-center items-center gap-x-12 gap-y-8 opacity-50 grayscale hover:grayscale-0 transition-all duration-700">
+            {/* Fallback to text if logos aren't available, but styled nicely */}
+            <h3 className="font-bold text-2xl tracking-tighter">PayPal</h3>
+            <h3 className="font-bold text-2xl tracking-tighter italic">yahoo!</h3>
+            <h3 className="font-bold text-2xl tracking-tight">Lenovo</h3>
+            <h3 className="font-serif font-bold text-2xl">Canon</h3>
+            <h3 className="font-bold text-2xl flex items-center gap-1"><div className="w-4 h-4 bg-sky-500 rounded-full"></div>zoom</h3>
+            <h3 className="font-medium text-2xl">Google</h3>
+          </div>
+        </div>
+      </section>
+
+      {/* --- THE RAG APPLICATION SECTION --- */}
+      <section ref={chatSectionRef} className="max-w-7xl mx-auto px-6 py-32 relative z-10">
+        
+        <div className="text-center mb-16">
+          <h2 className="text-3xl md:text-5xl font-bold mb-4">Transform Your Business</h2>
+          <p className="text-slate-400 max-w-2xl mx-auto">Upload a massive PDF and watch our backend orchestrate embeddings locally, delivering precision answers instantly.</p>
         </div>
 
-      </motion.div>
-    </main>
+        <div className="flex flex-col lg:flex-row gap-8 bg-slate-900/40 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-4 shadow-2xl">
+          
+          {/* L: Upload Pane */}
+          <div className="w-full lg:w-1/3 p-6 bg-white/[0.02] rounded-[1.5rem] border border-white/5 flex flex-col">
+            <h3 className="font-semibold text-xl mb-2 flex items-center gap-2">
+              <File className="text-indigo-400" /> Knowledge Base
+            </h3>
+            <p className="text-sm text-slate-400 mb-8">Inject data into the pipeline.</p>
+            
+            <input type="file" id="pdf-upload" accept="application/pdf" className="hidden" onChange={handleFileChange} />
+            <label 
+              htmlFor="pdf-upload"
+              className="group flex-1 min-h-[250px] border-2 border-dashed border-white/10 hover:border-indigo-500/50 hover:bg-indigo-500/5 transition-all rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer text-center mb-6"
+            >
+              <UploadCloud size={48} className="text-slate-600 group-hover:text-indigo-400 transition-colors mb-4" />
+              <p className="font-medium text-slate-300">{file ? file.name : "Select a PDF document"}</p>
+              <p className="text-xs text-slate-500 mt-2">Maximum file size: 50MB</p>
+            </label>
+
+            <button 
+              onClick={handleUpload}
+              disabled={!file || isUploading || uploadSuccess}
+              className={`w-full py-4 rounded-xl font-medium transition-all shadow-lg flex items-center justify-center gap-2 ${
+                uploadSuccess 
+                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
+                  : !file 
+                    ? "bg-slate-800 text-slate-500 cursor-not-allowed" 
+                    : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/25"
+              }`}
+            >
+              {isUploading && <Loader2 size={18} className="animate-spin" />}
+              {uploadSuccess && <CheckCircle2 size={18} />}
+              {isUploading ? "Vectorizing..." : uploadSuccess ? "Pipeline Active" : "Process Document"}
+            </button>
+          </div>
+
+          {/* R: Chat Pane */}
+          <div className="flex-1 flex flex-col h-[600px] bg-[#0A0F1C] rounded-[1.5rem] border border-white/5 relative overflow-hidden">
+            
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] pointer-events-none"></div>
+
+            {/* Chat header */}
+            <div className="p-5 border-b border-white/5 flex items-center gap-3 bg-white/[0.01]">
+              <div className={`w-3 h-3 rounded-full ${uploadSuccess ? 'bg-emerald-500 shadow-[0_0_10px_#10b981]' : 'bg-rose-500'}`}></div>
+              <span className="font-medium text-sm text-slate-300">
+                {uploadSuccess ? "OpenRouter Link Established" : "Awaiting Context Initialization"}
+              </span>
+            </div>
+
+            {/* Chat History */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth">
+              <AnimatePresence>
+                {messages.length === 0 && !uploadSuccess && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full flex flex-col items-center justify-center text-slate-500 gap-4 opacity-50">
+                    <Bot size={56} className="text-indigo-400/50" />
+                    <p className="text-center font-medium">No document detected.<br/>Please upload context to begin.</p>
+                  </motion.div>
+                )}
+
+                {messages.map((msg) => (
+                  <motion.div
+                    key={msg.id}
+                    initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    className={`flex gap-4 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
+                  >
+                    <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg ${
+                      msg.role === "user" ? "bg-indigo-600" : "bg-slate-800 ring-1 ring-white/10"
+                    }`}>
+                      {msg.role === "user" ? <User size={18} /> : <Bot size={18} className="text-indigo-300" />}
+                    </div>
+
+                    <div className={`max-w-[80%] p-4 text-sm leading-relaxed ${
+                      msg.role === "user" 
+                        ? "bg-indigo-600/10 border border-indigo-500/20 text-indigo-100 rounded-2xl rounded-tr-sm" 
+                        : "bg-white/[0.03] border border-white/5 text-slate-300 rounded-2xl rounded-tl-sm shadow-xl"
+                    }`}>
+                      {msg.content}
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+              
+              {isTyping && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-4">
+                  <div className="shrink-0 w-10 h-10 rounded-xl bg-slate-800 ring-1 ring-white/10 flex items-center justify-center">
+                    <Bot size={18} className="text-indigo-300" />
+                  </div>
+                  <div className="bg-white/[0.03] border border-white/5 rounded-2xl rounded-tl-sm p-4 flex gap-1.5 items-center">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                  </div>
+                </motion.div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+
+            {/* Input Form */}
+            <div className="p-4 bg-white/[0.01] border-t border-white/5 relative z-10">
+              <form onSubmit={handleSendMessage} className="relative flex items-center group">
+                <input 
+                  type="text" 
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder={uploadSuccess ? "Ask a question..." : "System locked."}
+                  disabled={!uploadSuccess || isTyping}
+                  className="w-full bg-slate-900/50 hover:bg-slate-900 focus:bg-slate-900 border border-white/10 rounded-xl py-4 pl-5 pr-14 outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all disabled:opacity-50 text-sm"
+                />
+                <button 
+                  type="submit"
+                  disabled={!inputValue.trim() || !uploadSuccess || isTyping}
+                  className="absolute right-2 p-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white rounded-[0.6rem] transition-all disabled:text-slate-600"
+                >
+                  <Send size={18} className={inputValue.trim() && uploadSuccess ? "translate-x-0.5" : ""} />
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }
