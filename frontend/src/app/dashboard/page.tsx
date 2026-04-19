@@ -17,7 +17,10 @@ import {
   Eye,
   PanelLeftClose,
   PanelLeft,
-  Reply
+  Reply,
+  Copy,
+  Download,
+  FileBox
 } from 'lucide-react';
 import { useAuthStore, useChatStore } from '@/lib/store';
 import ReactMarkdown from 'react-markdown';
@@ -125,6 +128,67 @@ export default function DashboardPage() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCopySummary = () => {
+    navigator.clipboard.writeText(summaryContent);
+    toast.success('Summary copied to clipboard');
+  };
+
+  const handleDownloadPDF = async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/summary/convert/pdf`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: summaryContent,
+      });
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'summary.pdf';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        toast.success('PDF downloaded');
+      }
+    } catch (err) {
+      toast.error('Failed to download PDF');
+    }
+  };
+
+  const handleDownloadWord = async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/summary/convert/word`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: summaryContent,
+      });
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'summary.docx';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        toast.success('Word document downloaded');
+      }
+    } catch (err) {
+      toast.error('Failed to download Word document');
     }
   };
 
@@ -636,11 +700,37 @@ className={`max-w-2xl lg:max-w-3xl px-4 py-3 rounded-lg ${
                     <span className="ml-3 text-slate-400">Generating summary...</span>
                   </div>
                 ) : (
-                  <div className="prose prose-invert max-w-none">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {summaryContent}
-                    </ReactMarkdown>
-                  </div>
+                  <>
+                    <div className="prose prose-invert max-w-none mb-4">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {summaryContent}
+                      </ReactMarkdown>
+                    </div>
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 pt-4 border-t border-slate-700">
+                      <button
+                        onClick={handleCopySummary}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+                      >
+                        <Copy className="w-4 h-4" />
+                        Copy
+                      </button>
+                      <button
+                        onClick={handleDownloadPDF}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition"
+                      >
+                        <FileBox className="w-4 h-4" />
+                        PDF
+                      </button>
+                      <button
+                        onClick={handleDownloadWord}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+                      >
+                        <FileText className="w-4 h-4" />
+                        Word
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
             </motion.div>

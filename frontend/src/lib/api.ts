@@ -100,6 +100,22 @@ export const chatAPI = {
     const response = await api.post('/summary', params);
     return response.data;
   },
+
+  convertToPDF: async (summaryText: string) => {
+    const response = await api.post('/summary/convert/pdf', summaryText, {
+      headers: { 'Content-Type': 'text/plain' },
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  convertToWord: async (summaryText: string) => {
+    const response = await api.post('/summary/convert/word', summaryText, {
+      headers: { 'Content-Type': 'text/plain' },
+      responseType: 'blob',
+    });
+    return response.data;
+  },
 };
 
 export interface HighlightData {
