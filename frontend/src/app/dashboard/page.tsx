@@ -329,14 +329,11 @@ export default function DashboardPage() {
       )}
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex relative">
+      <div id="split-container" className="flex-1 flex relative">
         {/* Chat */}
         <div 
           className="flex flex-col"
           style={{ width: showPdfViewer ? `${splitPosition}%` : '100%' }}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
         >
           {/* Chat Header */}
           <div className="flex items-center justify-between p-3 border-b border-slate-800 bg-slate-900/50">
@@ -497,9 +494,10 @@ className={`max-w-2xl lg:max-w-3xl px-4 py-3 rounded-lg ${
         {/* Resize Handle */}
         {showPdfViewer && selectedDocForViewer && (
           <div 
-            className="w-1 bg-slate-800 hover:bg-blue-500 cursor-col-resize flex items-center justify-center"
+            className={`w-1 cursor-col-resize flex items-center justify-center transition-colors ${
+            isResizing ? 'bg-blue-500' : 'bg-slate-800 hover:bg-blue-400'
+          }`}
             onMouseDown={handleMouseDown}
-            onMouseUp={handleMouseUp}
           >
             <div className="h-8 w-0.5 bg-slate-600 rounded" />
           </div>
