@@ -94,6 +94,74 @@ export const chatAPI = {
     const response = await api.get(`/history?limit=${limit}`);
     return response.data;
   },
+
+  getSummary: async (documentId?: number) => {
+    const params = documentId ? { document_id: documentId } : {};
+    const response = await api.post('/summary', params);
+    return response.data;
+  },
+};
+
+export interface HighlightData {
+  id: number;
+  document_id: number;
+  text: string;
+  color: string;
+  page_number: number;
+  created_at: string;
+}
+
+export interface NoteData {
+  id: number;
+  document_id: number;
+  content: string;
+  page_number: number;
+  created_at: string;
+}
+
+export const highlightAPI = {
+  create: async (documentId: number, text: string, color: string = "#FFEB3B", pageNumber: number = 1) => {
+    const response = await api.post('/highlights', {
+      document_id: documentId,
+      text,
+      color,
+      page_number: pageNumber,
+    });
+    return response.data;
+  },
+
+  getAll: async (documentId?: number) => {
+    const params = documentId ? { document_id: documentId } : {};
+    const response = await api.get('/highlights', { params });
+    return response.data;
+  },
+
+  delete: async (highlightId: number) => {
+    const response = await api.delete(`/highlights/${highlightId}`);
+    return response.data;
+  },
+};
+
+export const noteAPI = {
+  create: async (documentId: number, content: string, pageNumber: number = 1) => {
+    const response = await api.post('/notes', {
+      document_id: documentId,
+      content,
+      page_number: pageNumber,
+    });
+    return response.data;
+  },
+
+  getAll: async (documentId?: number) => {
+    const params = documentId ? { document_id: documentId } : {};
+    const response = await api.get('/notes', { params });
+    return response.data;
+  },
+
+  delete: async (noteId: number) => {
+    const response = await api.delete(`/notes/${noteId}`);
+    return response.data;
+  },
 };
 
 export default api;
