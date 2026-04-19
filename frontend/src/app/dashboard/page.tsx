@@ -16,6 +16,8 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { useAuthStore, useChatStore } from '@/lib/store';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { authAPI, documentAPI, chatAPI, DocumentData } from '@/lib/api';
 import { toast } from 'sonner';
 
@@ -246,15 +248,23 @@ export default function DashboardPage() {
                     exit={{ opacity: 0 }}
                     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div
-                      className={`max-w-md px-4 py-3 rounded-lg ${
-                        msg.role === 'user'
-                          ? 'bg-white text-black'
-                          : 'bg-slate-800 text-white'
-                      }`}
-                    >
-                      <p className="text-sm">{msg.content}</p>
-                    </div>
+                      <div
+                        className={`max-w-md px-4 py-3 rounded-lg ${
+                          msg.role === 'user'
+                            ? 'bg-white text-black'
+                            : 'bg-slate-800 text-white'
+                        }`}
+                      >
+                        {msg.role === 'user' ? (
+                          <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                        ) : (
+                          <div className="prose prose-invert max-w-none prose-sm prose-headings:font-bold prose-a:text-blue-400 hover:prose-a:text-blue-300 prose-code:before:content-none prose-code:after:content-none prose-pre:p-2 prose-pre:rounded prose-pre:bg-slate-900/50 prose-pre:text-xs prose-ul:my-1 prose-li:my-0">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {msg.content}
+                            </ReactMarkdown>
+                          </div>
+                        )}
+                      </div>
                   </motion.div>
                 ))}
               </AnimatePresence>

@@ -51,3 +51,94 @@ body {
   background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
   background-size: 24px 24px;
 }
+
+/* Tailwind Typography (Prose) for Markdown - Dark Theme */
+.prose {
+  color: hsl(var(--foreground));
+}
+.prose :where([class~="lead"]):not(:where([class~="not-prose"] *)) {
+  color: hsl(var(--foreground));
+}
+.prose :where(h1, h2, h3, h4, h5, h6):not(:where([class~="not-prose"] *)) {
+  color: hsl(var(--foreground));
+}
+.prose :where(p):not(:where([class~="not-prose"] *)) {
+  color: hsl(var(--foreground));
+}
+.prose :where(a):not(:where([class~="not-prose"] *)) {
+  color: #60a5fa;
+  text-decoration: underline;
+  font-weight: 500;
+}
+.prose :where(a):not(:where([class~="not-prose"] *)):hover {
+  color: #3b82f6;
+}
+.prose :where(blockquote strong):not(:where([class~="not-prose"] *)) {
+  color: inherit;
+}
+.prose :where(blockquote a):not(:where([class~="not-prose"] *)) {
+  color: #3b82f6;
+}
+.prose :where(ul > li):not(:where([class~="not-prose"] *)) {
+  color: hsl(var(--foreground));
+}
+.prose :where(ol > li):not(:where([class~="not-prose"] *)) {
+  color: hsl(var(--foreground));
+}
+.prose :where(ol > li::marker):not(:where([class~="not-prose"] *)) {
+  color: hsl(var(--foreground));
+}
+.prose :where(ul > li::marker):not(:where([class~="not-prose"] *)) {
+  color: hsl(var(--foreground));
+}
+.prose :where(hr):not(:where([class~="not-prose"] *)) {
+  border-color: hsl(var(--gray-200));
+}
+.prose :where(thead th):not(:where([class~="not-prose"] *)) {
+  color: hsl(var(--foreground));
+}
+.prose :where(code):not(:where([class~="not-prose"] *)) {
+  color: hsl(var(--orange-100));
+  font-weight: 600;
+  font-size: .875em;
+}
+.prose :where(pre):not(:where([class~="not-prose"] *)) {
+  background-color: hsl(var(--gray-900));
+}
+.prose :where(thead):not(:where([class~="not-prose"] *)) th {
+  color: hsl(var(--foreground));
+}
+.prose :where(h1):not(:where([class~="not-prose"] *)) {
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+}
+.prose :where(h2):not(:where([class~="not-prose"] *)) {
+  font-size: 1.5rem;
+  line-height: 2rem;
+}
+.prose :where(h3):not(:where([class~="not-prose"] *)) {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+}
+.prose :where(h4):not(:where([class~="not-prose"] *)) {
+  font-size: 1.125rem;
+  line-height: 1.5rem;
+}
+.prose :where(code):not(:where([class~="not-prose"] *))::before {
+  content: "\00ab";
+}
+.prose :where(code):not(:where([class~="not-prose"] *))::after {
+  content: "\00bb";
+}
+.prose :where(a code):not(:where([class~="not-prose"] *))::before {
+  content: "";
+}
+.prose :where(a code):not(:where([class~="not-prose"] *))::after {
+  content: "";
+}
+.prose :where(thead th:first-child):not(:where([class~="not-prose"] *))::after {
+  border-right: 1px solid hsl(var(--gray-300));
+}
+.prose :where(thead th:not(:last-child)):not(:where([class~="not-prose"] *))::after {
+  border-right: 1px solid hsl(var(--gray-300));
+}
