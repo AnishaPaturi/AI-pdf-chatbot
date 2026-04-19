@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta
 from typing import Optional
 import os
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from models import User
@@ -11,9 +11,6 @@ from models import User
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
-
-# Password hashing setup
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 # --- Pydantic Schemas ---
@@ -50,13 +47,16 @@ class UserResponse(BaseModel):
 
 # --- Password Hashing Functions ---
 def hash_password(password: str) -> str:
-    """Hash a password using bcrypt."""
-    return pwd_context.hash(password)
+    if len(password) < 6:
+        raise ValueError("Password too short")
+    password_bytes = password.encode('utf-8')[:72]
+    return bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode('utf-8')
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    password_bytes = plain_password.encode('utf-8')[:72]
+    return bcrypt.checkpw(password_bytes, hashed_password.encode('utf-8'))
 
 
 # --- JWT Token Functions ---

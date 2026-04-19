@@ -2,7 +2,7 @@ import os
 import shutil
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPBearer, HTTPAuthCredentials
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -82,7 +82,7 @@ def get_or_create_vector_store(user_id: int):
 # --- Security ---
 security = HTTPBearer()
 
-def get_current_user(credentials: HTTPAuthCredentials = Depends(security), db: Session = Depends(get_db)):
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
     """Extract and validate JWT token from request headers."""
     token = credentials.credentials
     payload = decode_token(token)
