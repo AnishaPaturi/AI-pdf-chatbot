@@ -183,22 +183,41 @@ export default function DashboardPage() {
     setShowPdfViewer(true);
   };
 
-  const handleMouseDown = () => {
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
     setIsResizing(true);
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (isResizing && selectedDocForViewer) {
-      const container = e.currentTarget as HTMLDivElement;
-      const rect = container.getBoundingClientRect();
-      const newPosition = ((e.clientX - rect.left) / rect.width) * 100;
-      setSplitPosition(Math.min(Math.max(25, newPosition), 75));
-    }
-  };
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      
+      const container = document.getElementById('split-container');
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        const newPosition = ((e.clientX - rect.left) / rect.width) * 100;
+        setSplitPosition(Math.min(Math.max(25, newPosition), 75));
+      }
+    };
 
-  const handleMouseUp = () => {
-    setIsResizing(false);
-  };
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizing]);
   
   const togglePdfViewer = () => {
     if (selectedDocForViewer) {
