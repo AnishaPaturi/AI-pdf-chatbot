@@ -274,7 +274,9 @@ async def chat_with_pdf(
         llm = ChatOpenAI(
             api_key=openrouter_api_key,
             base_url="https://openrouter.ai/api/v1",
-            model="openrouter/free",
+model="openrouter/auto",
+            temperature=0.1,
+            max_tokens=8192,
         )
         
         # STRICT SYSTEM PROMPT - Prevents hallucination
@@ -294,7 +296,11 @@ async def chat_with_pdf(
         ])
         
         # Create RAG chain
-        retriever = vector_store.as_retriever(search_kwargs={"k": 4})
+        # Detect summary queries for better coverage
+        query_lower = query.lower()
+        k_docs = 20 if "summary" in query_lower or "summarize" in query_lower or "tl" in query_lower else 8
+        
+        retriever = vector_store.as_retriever(search_kwargs={"k": k_docs})
         
         def format_docs(docs):
             return "\n\n".join(doc.page_content for doc in docs)

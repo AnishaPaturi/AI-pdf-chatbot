@@ -249,7 +249,7 @@ export default function DashboardPage() {
                     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                       <div
-                        className={`max-w-md px-4 py-3 rounded-lg ${
+className={`max-w-2xl lg:max-w-3xl px-4 py-3 rounded-lg ${
                           msg.role === 'user'
                             ? 'bg-white text-black'
                             : 'bg-slate-800 text-white'
