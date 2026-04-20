@@ -15,11 +15,12 @@ DocuMind is an enterprise-grade, web-based Retrieval-Augmented Generation (RAG) 
 
 - 🔐 **JWT Authentication** - Secure login/register with password hashing
 - 📄 **Multi-PDF Support** - Upload multiple documents simultaneously
-- 🎯 **Strict LLM Scoping** - AI refuses to hallucinate, only uses document context
+- 🚫 **Duplicate Prevention** - Automatically skips already uploaded files
+- 🎯 **Interactive Chat** - AI combines document context with general knowledge for helpful answers
 - 💾 **Data Persistence** - SQLite database for users, documents, and query history
 - 🚀 **Fast Responses** - Optimized vector search with ChromaDB
 - 🎨 **Modern UI** - Dark, minimalist design (napkin.ai inspired)
-- 📊 **Query History** - Track all conversations per user
+- 📊 **Query History** - Track all conversations per user with tabbed sidebar
 - 📖 **Document Summary** - Generate complete summaries of uploaded PDFs
 - 💬 **Quoted Replies** - Ask AI about selected text with WhatsApp-style quoted replies
 - 🔍 **PDF Viewer** - Built-in PDF viewer with split-screen reading
@@ -27,6 +28,7 @@ DocuMind is an enterprise-grade, web-based Retrieval-Augmented Generation (RAG) 
 - 📥 **Export Options** - Copy, download as PDF, or convert to Word documents
 - 🔄 **Resizable Panels** - Smooth drag-to-resize split view for chat and PDF
 - 👁️ **Toggle Sidebar** - Show/hide left sidebar panel
+- ⚙️ **Settings Page** - Account settings and sign out functionality
 
 ## Tech Stack
 
@@ -71,7 +73,7 @@ graph TD
     B -->|User-specific Search| F
     F -.->|Return Top K Chunks| G[LangChain RAG Processor]
     
-    G -->|Strict Context Only| H["OpenRouter LLM<br/>(with hallucination prevention)"]
+    G -->|Context + Knowledge| H["OpenRouter LLM<br/>(Interactive Answers)"]
     H -.->|Generated Answer| B
     B -.->|JSON Response| A
     
@@ -105,8 +107,16 @@ AI-pdf-chatbot/
 │   │   │   │   └── register/
 │   │   │   │       └── page.tsx # Registration form
 │   │   │   ├── dashboard/
-│   │   │   │   └── page.tsx     # Main chat dashboard with sidebar
+│   │   │   │   ├── page.tsx     # Main chat dashboard with sidebar
+│   │   │   │   └── settings/
+│   │   │   │       └── page.tsx # Settings page
 │   │   │   └── api/
+│   │   │       ├── summary/
+│   │   │       │   └── convert/
+│   │   │       │       ├── pdf/
+│   │   │       │       │   └── route.ts
+│   │   │       │       └── word/
+│   │   │       │           └── route.ts
 │   │   │       └── document/
 │   │   │           └── [id]/
 │   │   │               └── file/
@@ -292,31 +302,3 @@ For issues and questions, please open a GitHub issue.
 ---
 
 **Built with ❤️ using FastAPI, Next.js, and LangChain**
-│
-└── frontend/                 # Next.js UI
-    ├── src/
-    │   └── app/
-    │       ├── globals.css   # Global Tailwind and animated background styles
-    │       ├── page.tsx      # Huge dynamic landing page and chat interfaces
-    │       └── layout.tsx    # Next.js root layout
-    ├── public/               # Static assets & generated 3D images
-    ├── package.json
-    └── tailwind.config.ts    # Tailwind theme configuration
-```
-
-## 6. Additional Features
-- **Strict Anti-Hallucination**: The LLM prompt is engineered to *only* answer based on the provided PDF context. 
-- **Persisted Vector Memory**: ChromaDB retains vectorized documents locally so the backend doesn't re-process data unnecessarily.
-- **Dynamic 3D Aesthetics**: The UI is treated as a full-scale commercial landing page with 3D avatars, floating elements, and deep interactive states.
-
-## 7. Timeline of the Project
-- **Phase 1**: Initializing dual-repository structure and planning RAG pipeline architecture.
-- **Phase 2**: Bootstrapping Python Backend (FastAPI, dependencies, Langchain abstractions).
-- **Phase 3**: Creating the React/NextJS skeleton and wiring up core RAG API fetch loops.
-- **Phase 4**: Major Visual Overhaul - Transforming the UI from a generic chat app to a highly animated, starry-themed digital product landing page.
-
-## 8. Authors
-- **Anisha Paturi** - Lead Developer & AI Enthusiast
-
----
-> Note: If you encounter an `Is FastAPI running?` error, ensure you have renamed `.env.example` to `.env`, added your OpenRouter key, and explicitly restarted your `uvicorn main:app --reload` server!
