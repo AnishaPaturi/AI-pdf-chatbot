@@ -1,7 +1,7 @@
 import os
 import shutil
 from datetime import datetime
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Form
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Form, Body
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -492,7 +492,7 @@ async def get_document_summary(
 # --- Convert Summary to PDF ---
 @app.post("/summary/convert/pdf")
 async def convert_summary_to_pdf(
-    summary_text: str,
+    summary_text: str = Body(...),
     current_user = Depends(get_current_user)
 ):
     """Convert summary text to PDF and return as downloadable file."""
@@ -532,7 +532,7 @@ async def convert_summary_to_pdf(
 # --- Convert Summary to Word ---
 @app.post("/summary/convert/word")
 async def convert_summary_to_word(
-    summary_text: str,
+    summary_text: str = Body(...),
     current_user = Depends(get_current_user)
 ):
     """Convert summary text to Word document and return as downloadable file."""

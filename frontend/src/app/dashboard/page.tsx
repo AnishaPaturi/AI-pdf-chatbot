@@ -34,7 +34,7 @@ const PDFViewer = dynamic(() => import('@/components/PDFViewer'), { ssr: false }
 export default function DashboardPage() {
   const router = useRouter();
   const { user, logout } = useAuthStore();
-  const { messages, isLoading, addMessage, setLoading } = useChatStore();
+  const { messages, isLoading, addMessage, setLoading, clearMessages } = useChatStore();
 
   const [documents, setDocuments] = useState<DocumentData[]>([]);
   const [input, setInput] = useState('');
@@ -141,10 +141,10 @@ export default function DashboardPage() {
       const response = await fetch('/api/summary/convert/pdf', {
         method: 'POST',
         headers: {
-          'Content-Type': 'text/plain',
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
-        body: summaryContent,
+        body: JSON.stringify({ summary_text: summaryContent }),
       });
       
       if (response.ok) {
@@ -158,6 +158,9 @@ export default function DashboardPage() {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
         toast.success('PDF downloaded');
+      } else {
+        const error = await response.json();
+        toast.error(error.detail || 'Failed to download PDF');
       }
     } catch (err) {
       toast.error('Failed to download PDF');
@@ -169,10 +172,10 @@ export default function DashboardPage() {
       const response = await fetch('/api/summary/convert/word', {
         method: 'POST',
         headers: {
-          'Content-Type': 'text/plain',
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
-        body: summaryContent,
+        body: JSON.stringify({ summary_text: summaryContent }),
       });
       
       if (response.ok) {
@@ -186,6 +189,9 @@ export default function DashboardPage() {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
         toast.success('Word document downloaded');
+      } else {
+        const error = await response.json();
+        toast.error(error.detail || 'Failed to download Word document');
       }
     } catch (err) {
       toast.error('Failed to download Word document');
@@ -324,7 +330,10 @@ export default function DashboardPage() {
         </div>
 
         {/* New Chat Button */}
-        <button className="m-4 py-2.5 px-4 bg-white text-black font-semibold rounded-lg hover:bg-slate-100 transition flex items-center justify-center gap-2">
+        <button 
+          onClick={() => { clearMessages(); }}
+          className="m-4 py-2.5 px-4 bg-white text-black font-semibold rounded-lg hover:bg-slate-100 transition flex items-center justify-center gap-2"
+        >
           <Plus className="w-4 h-4" />
           New Chat
         </button>
@@ -384,7 +393,10 @@ export default function DashboardPage() {
             <Upload className="w-4 h-4" />
             Upload PDF
           </button>
-          <button className="w-full py-2 px-3 bg-slate-800/50 hover:bg-slate-800 text-slate-300 text-sm font-medium rounded-lg transition flex items-center justify-center gap-2">
+          <button 
+            onClick={() => router.push('/dashboard/settings')}
+            className="w-full py-2 px-3 bg-slate-800/50 hover:bg-slate-800 text-slate-300 text-sm font-medium rounded-lg transition flex items-center justify-center gap-2"
+          >
             <Settings className="w-4 h-4" />
             Settings
           </button>
