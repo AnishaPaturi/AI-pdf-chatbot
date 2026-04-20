@@ -66,6 +66,13 @@ async def startup_event():
     except Exception as e:
         print(f"⚠ Database init warning: {e}")
 
+# Also try init immediately at module load
+try:
+    init_db()
+    print("✓ Database ready")
+except Exception as e:
+    print(f"⚠ Database init error: {e}")
+
 # Initialize embeddings (lazy load in production to avoid download issues)
 def get_embeddings():
     global embeddings
@@ -139,18 +146,24 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
 @app.post("/login", response_model=TokenResponse)
 async def login(credentials: UserLogin, db: Session = Depends(get_db)):
     """Authenticate user and return access token."""
-    user = authenticate_user(db, credentials.email, credentials.password)
-    
-    if user is None:
-        raise HTTPException(status_code=401, detail="Invalid email or password")
-    
-    token = create_access_token(user.id, user.email)
-    return TokenResponse(
-        access_token=token,
-        user_id=user.id,
-        email=user.email,
-        name=user.name
-    )
+    try:
+        user = authenticate_user(db, credentials.email, credentials.password)
+        
+        if user is None:
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+        
+        token = create_access_token(user.id, user.email)
+        return TokenResponse(
+            access_token=token,
+            user_id=user.id,
+            email=user.email,
+            name=user.name
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Login error: {e}")
+        raise HTTPException(status_code=500, detail="Server error during login")
 
 @app.get("/me", response_model=UserResponse)
 async def get_current_user_info(
