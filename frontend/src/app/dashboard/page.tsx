@@ -138,7 +138,7 @@ export default function DashboardPage() {
 
   const handleDownloadPDF = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/summary/convert/pdf`, {
+      const response = await fetch('/api/summary/convert/pdf', {
         method: 'POST',
         headers: {
           'Content-Type': 'text/plain',
@@ -166,7 +166,7 @@ export default function DashboardPage() {
 
   const handleDownloadWord = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/summary/convert/word`, {
+      const response = await fetch('/api/summary/convert/word', {
         method: 'POST',
         headers: {
           'Content-Type': 'text/plain',

@@ -286,7 +286,7 @@ async def chat_with_pdf(
         llm = ChatOpenAI(
             api_key=openrouter_api_key,
             base_url="https://openrouter.ai/api/v1",
-            model="anthropic/claude-3-haiku",
+            model="google/gemini-2.0-flash-001",
             temperature=0.1,
             max_tokens=4096,
         )
@@ -433,15 +433,20 @@ async def get_document_summary(
         llm = ChatOpenAI(
             api_key=openrouter_api_key,
             base_url="https://openrouter.ai/api/v1",
-            model="anthropic/claude-3-haiku",
+            model="google/gemini-2.0-flash-001",
             temperature=0.1,
             max_tokens=8192,
         )
         
         # Get ALL documents for complete summary
         # First get collection to know total documents
-        collection = vector_store.get()
-        total_docs = len(collection.get('ids', []))
+        try:
+            collection = vector_store.get()
+            total_docs = len(collection.get('ids', []))
+        except:
+            # If get() fails, try alternative method
+            total_docs = 100
+        
         k_docs = min(total_docs, 100)  # Get up to 100 docs or all if less
         
         print(f"Generating summary for {total_docs} document chunks...")
