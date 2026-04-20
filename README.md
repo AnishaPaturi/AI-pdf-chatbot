@@ -301,4 +301,77 @@ For issues and questions, please open a GitHub issue.
 
 ---
 
+## Deployment Guide
+
+### Option 1: Vercel (Frontend) + Render/Railway (Backend)
+
+#### Backend Deployment (Render.com - Free Tier)
+
+1. **Push your code to GitHub**
+
+2. **Create a new Web Service on Render**
+   - Go to https://render.com and connect your GitHub
+   - Create a new Web Service
+   - Select your repository
+   - Build Command: `pip install -r requirements.txt`
+   - Start Command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+
+3. **Environment Variables on Render**
+   ```
+   OPENROUTER_API_KEY=your_openrouter_key
+   SECRET_KEY=your-secret-key
+   DATABASE_URL=sqlite:///./documind.db
+   ```
+
+4. **Note**: For persistent storage (uploaded PDFs), add a Render Disk or use cloud storage (S3)
+
+#### Frontend Deployment (Vercel)
+
+1. **Push your code to GitHub**
+
+2. **Go to https://vercel.com**
+   - Import your repository
+   - Framework Preset: Next.js
+   - Build Command: `npm run build`
+   - Output Directory: `.next`
+
+3. **Environment Variables on Vercel**
+   ```
+   NEXT_PUBLIC_API_URL=https://your-backend-url.onrender.com
+   ```
+
+4. **Deploy**
+
+---
+
+### Option 2: Deploy Both on Railway
+
+1. **Go to https://railway.app**
+2. **Deploy Backend**
+   - New Project → GitHub Repo
+   - Add environment variables
+   - Deploy
+
+3. **Deploy Frontend**
+   - New Project → GitHub Repo
+   - Add environment variables:
+     - `NEXT_PUBLIC_API_URL` = your railway backend URL
+   - Build Command: `npm run build`
+   - Output Directory: `.next`
+
+---
+
+### Important: Database & File Storage
+
+**For Production:**
+- Replace SQLite with PostgreSQL (use ` DATABASE_URL=postgresql://...`)
+- Use AWS S3 or Cloudinary for PDF file storage
+- The ChromaDB vector store should be configured for persistence
+
+**Quick Fix for Now:**
+- SQLite will work but won't scale
+- Uploaded PDFs are stored locally in `backend/uploads/` - use a mounted volume on Render/Railway
+
+---
+
 **Built with ❤️ using FastAPI, Next.js, and LangChain**
