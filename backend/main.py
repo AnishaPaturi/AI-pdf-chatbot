@@ -56,17 +56,7 @@ CHROMA_DB_DIR = os.getenv("CHROMA_DB_DIR", "./chroma_db")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(CHROMA_DB_DIR, exist_ok=True)
 
-# Initialize database on startup
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database tables on startup."""
-    try:
-        init_db()
-        print("✓ Database initialized")
-    except Exception as e:
-        print(f"⚠ Database init warning: {e}")
-
-# Also try init immediately at module load
+# Initialize database immediately
 try:
     init_db()
     print("✓ Database ready")

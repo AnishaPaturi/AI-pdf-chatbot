@@ -4,7 +4,8 @@ from models import Base
 import os
 
 # SQLite database URL - stores the database file in the backend directory
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./vaat_chatbot.db")
+db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "documind.db")
+DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{db_path}")
 
 # Create the SQLAlchemy engine
 engine = create_engine(
@@ -19,8 +20,12 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def init_db():
     """Initialize the database by creating all tables."""
-    Base.metadata.create_all(bind=engine)
-    print("Database tables created successfully!")
+    try:
+        Base.metadata.create_all(bind=engine)
+        print("Database tables created successfully!")
+    except Exception as e:
+        print(f"Database init error: {e}")
+        raise
 
 
 def get_db():
