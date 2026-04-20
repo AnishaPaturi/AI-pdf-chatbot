@@ -291,14 +291,15 @@ async def chat_with_pdf(
             max_tokens=4096,
         )
 
-        # STRICT SYSTEM PROMPT - Prevents hallucination
+        # Interactive SYSTEM PROMPT - Uses document context AND general knowledge
         system_prompt = (
-            "You are a strict data-extraction AI. You MUST ONLY answer using the provided Context. "
-            "If the answer or topic is not explicitly found in the Context provided below, you MUST reply with: "
-            "'I can only answer questions based on the uploaded documents.' "
-            "DO NOT use your internal knowledge under any circumstance. "
-            "DO NOT make up information. ONLY use what is in the context.\n\n"
-            "Context:\n"
+            "You are a helpful AI assistant that answers questions about uploaded documents. "
+            "Use the provided document context as the primary source for your answer. "
+            "If the document contains relevant information, base your answer on it and cite specific details. "
+            "If the document has partial or limited information, combine what you find with your general knowledge to provide a more complete answer. "
+            "If the document has NO relevant information, use your general knowledge to explain the concept while being honest that it's not from the document. "
+            "Always be helpful, accurate, and provide context when combining document info with general knowledge.\n\n"
+            "Document Context:\n"
             "{context}"
         )
 

@@ -20,7 +20,8 @@ import {
   Reply,
   Copy,
   Download,
-  FileBox
+  FileBox,
+  Clock
 } from 'lucide-react';
 import { useAuthStore, useChatStore } from '@/lib/store';
 import ReactMarkdown from 'react-markdown';
@@ -55,6 +56,9 @@ export default function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [docLoading, setDocLoading] = useState(true);
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'documents' | 'history'>('documents');
+  const [chatHistory, setChatHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   // Auto-scroll to latest message
   useEffect(() => {
@@ -81,6 +85,25 @@ export default function DashboardPage() {
 
     fetchDocuments();
   }, [user, router]);
+
+  // Fetch chat history when switching to history tab
+  useEffect(() => {
+    if (activeSidebarTab !== 'history') return;
+    
+    const fetchHistory = async () => {
+      setHistoryLoading(true);
+      try {
+        const response = await chatAPI.getHistory(50);
+        setChatHistory(response.history || []);
+      } catch (err) {
+        console.error('Failed to fetch history:', err);
+      } finally {
+        setHistoryLoading(false);
+      }
+    };
+    
+    fetchHistory();
+  }, [activeSidebarTab]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -114,14 +137,31 @@ export default function DashboardPage() {
   const handleUpload = async (files: File[]) => {
     setLoading(true);
     try {
-      const response = await documentAPI.upload(files);
-      setDocuments([...documents, ...response.results.filter((r: any) => r.status === 'success').map((r: any) => ({
-        id: r.document_id,
-        filename: r.filename,
-        chunk_count: r.chunks,
-        created_at: new Date().toISOString(),
-      }))]);
-      toast.success(`${response.files_processed} file(s) uploaded successfully!`);
+      // Check for duplicate files
+      const existingFilenames = documents.map(d => d.filename.toLowerCase());
+      const newFiles = files.filter(f => !existingFilenames.includes(f.name.toLowerCase()));
+      
+      if (newFiles.length === 0) {
+        toast.error('All files already uploaded');
+        return;
+      }
+      
+      if (newFiles.length < files.length) {
+        toast.warning(`${files.length - newFiles.length} file(s) already exist, skipping duplicates`);
+      }
+      
+      const response = await documentAPI.upload(newFiles);
+      const successfulUploads = response.results.filter((r: any) => r.status === 'success');
+      
+      if (successfulUploads.length > 0) {
+        setDocuments([...documents, ...successfulUploads.map((r: any) => ({
+          id: r.document_id,
+          filename: r.filename,
+          chunk_count: r.chunks,
+          created_at: new Date().toISOString(),
+        }))]);
+        toast.success(`${successfulUploads.length} file(s) uploaded successfully!`);
+      }
       setShowUpload(false);
     } catch (err: any) {
       toast.error('Failed to upload files');
@@ -338,50 +378,113 @@ export default function DashboardPage() {
           New Chat
         </button>
 
+{/* Tabs */}
+        <div className="flex px-4 gap-2 mb-2">
+          <button
+            onClick={() => setActiveSidebarTab('documents')}
+            className={`flex-1 py-2 px-3 text-xs font-medium rounded-lg transition flex items-center justify-center gap-1 ${
+              activeSidebarTab === 'documents'
+                ? 'bg-white text-black'
+                : 'bg-slate-800 text-slate-400 hover:text-white'
+            }`}
+          >
+            <FileText className="w-3 h-3" />
+            Documents
+          </button>
+          <button
+            onClick={() => setActiveSidebarTab('history')}
+            className={`flex-1 py-2 px-3 text-xs font-medium rounded-lg transition flex items-center justify-center gap-1 ${
+              activeSidebarTab === 'history'
+                ? 'bg-white text-black'
+                : 'bg-slate-800 text-slate-400 hover:text-white'
+            }`}
+          >
+            <Clock className="w-3 h-3" />
+            History
+          </button>
+        </div>
+
         {/* Documents Section */}
         <div className="flex-1 overflow-y-auto px-4">
-          <h3 className="text-xs font-semibold text-slate-400 mb-3 uppercase">Documents</h3>
-          {docLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
-            </div>
-          ) : documents.length === 0 ? (
-            <p className="text-sm text-slate-500 py-8 text-center">No documents yet</p>
-) : (
-              <div className="space-y-2">
-                {documents.map((doc) => (
-                  <motion.div
-                    key={doc.id}
-                    className="p-3 bg-slate-800/50 hover:bg-slate-800 rounded-lg cursor-pointer transition group"
-                    whileHover={{ x: 4 }}
-                  >
-                    <div className="flex items-start gap-2">
-                      <FileText className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-white truncate">{doc.filename}</p>
-                        <p className="text-xs text-slate-500">{doc.chunk_count} chunks</p>
+          {activeSidebarTab === 'documents' ? (
+            <>
+              <h3 className="text-xs font-semibold text-slate-400 mb-3 uppercase">Documents</h3>
+              {docLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
+                </div>
+              ) : documents.length === 0 ? (
+                <p className="text-sm text-slate-500 py-8 text-center">No documents yet</p>
+              ) : (
+                <div className="space-y-2">
+                  {documents.map((doc) => (
+                    <motion.div
+                      key={doc.id}
+                      className="p-3 bg-slate-800/50 hover:bg-slate-800 rounded-lg cursor-pointer transition group"
+                      whileHover={{ x: 4 }}
+                    >
+                      <div className="flex items-start gap-2">
+                        <FileText className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-white truncate">{doc.filename}</p>
+                          <p className="text-xs text-slate-500">{doc.chunk_count} chunks</p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex gap-1 mt-2 opacity-0 group-hover:opacity-100 transition">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleViewPdf(doc); }}
-                        className="p-1.5 hover:bg-slate-700 rounded text-slate-400 hover:text-white"
-                        title="View PDF"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleGetSummary(doc.id); }}
-                        className="p-1.5 hover:bg-slate-700 rounded text-slate-400 hover:text-white"
-                        title="Get Summary"
-                      >
-                        <FileText className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            )}
+                      <div className="flex gap-1 mt-2 opacity-0 group-hover:opacity-100 transition">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleViewPdf(doc); }}
+                          className="p-1.5 hover:bg-slate-700 rounded text-slate-400 hover:text-white"
+                          title="View PDF"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleGetSummary(doc.id); }}
+                          className="p-1.5 hover:bg-slate-700 rounded text-slate-400 hover:text-white"
+                          title="Get Summary"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <h3 className="text-xs font-semibold text-slate-400 mb-3 uppercase">Chat History</h3>
+              {historyLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
+                </div>
+              ) : chatHistory.length === 0 ? (
+                <p className="text-sm text-slate-500 py-8 text-center">No chat history yet</p>
+              ) : (
+                <div className="space-y-2">
+                  {chatHistory.map((item) => (
+                    <motion.div
+                      key={item.id}
+                      className="p-3 bg-slate-800/50 hover:bg-slate-800 rounded-lg cursor-pointer transition"
+                      whileHover={{ x: 4 }}
+                      onClick={() => {
+                        addMessage('user', item.query);
+                        addMessage('bot', item.response);
+                      }}
+                    >
+                      <div className="flex items-start gap-2">
+                        <MessageSquare className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-white truncate">{item.query}</p>
+                          <p className="text-xs text-slate-500 line-clamp-2">{item.response}</p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         {/* Footer */}
