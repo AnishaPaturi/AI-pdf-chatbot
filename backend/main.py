@@ -32,7 +32,7 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv(override=True)
 
-print("Starting DocuMind Backend...")
+print("Starting DocuMind Backend... v2.1")
 
 # --- FastAPI App Setup ---
 app = FastAPI(
