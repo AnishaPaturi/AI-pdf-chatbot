@@ -4,6 +4,7 @@ python-multipart
 langchain
 langchain-community
 langchain-openai
+langchain-huggingface
 chromadb
 pypdf
 python-dotenv
@@ -12,3 +13,5 @@ pydantic[email]
 python-jose[cryptography]
 passlib[bcrypt]
 pyjwt
+weasyprint
+python-docx

@@ -1,6 +1,8 @@
 import os
 import shutil
+from datetime import datetime
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Form
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -8,7 +10,7 @@ from typing import List
 
 # Database & Auth
 from database import init_db, get_db, engine
-from models import Base, Document, QueryLog
+from models import Base, Document, QueryLog, Highlight, Note
 from auth import (
     UserRegister, UserLogin, TokenResponse, UserResponse,
     create_access_token, decode_token, register_user, 
@@ -104,6 +106,9 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     answer: str
 
+class SummaryResponse(BaseModel):
+    summary: str
+
 # --- Auth Endpoints ---
 @app.post("/register", response_model=TokenResponse)
 async def register(user_data: UserRegister, db: Session = Depends(get_db)):
@@ -192,12 +197,19 @@ async def upload_pdfs(
                 )
                 chunks = text_splitter.split_documents(documents)
                 
-                # Store in user's vector database
-                vector_store = Chroma.from_documents(
-                    documents=chunks,
-                    embedding=embeddings,
-                    persist_directory=user_chroma_dir
-                )
+                # Store in user's vector database - merge with existing if present
+                existing_store = get_or_create_vector_store(user_id)
+                if existing_store is not None:
+                    # Add to existing vector store
+                    existing_store.add_documents(chunks)
+                    vector_store = existing_store
+                else:
+                    # Create new vector store
+                    vector_store = Chroma.from_documents(
+                        documents=chunks,
+                        embedding=embeddings,
+                        persist_directory=user_chroma_dir
+                    )
                 
                 # Update cache
                 vector_store_cache[user_id] = vector_store
@@ -243,7 +255,7 @@ async def upload_pdfs(
 @app.post("/chat", response_model=ChatResponse)
 async def chat_with_pdf(
     request: ChatRequest,
-    current_user = Depends(get_current_user),
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -251,6 +263,153 @@ async def chat_with_pdf(
     The AI ONLY answers based on the uploaded documents.
     """
     query = request.query
+    user_id = current_user.id
+
+    # Get user's vector store
+    vector_store = get_or_create_vector_store(user_id)
+
+    if vector_store is None:
+        raise HTTPException(
+            status_code=400,
+            detail="No documents uploaded yet. Please upload PDFs first."
+        )
+
+    openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
+    if not openrouter_api_key:
+        raise HTTPException(
+            status_code=500,
+            detail="OPENROUTER_API_KEY not configured"
+        )
+
+    try:
+        # Initialize LLM - use a text-only model
+        llm = ChatOpenAI(
+            api_key=openrouter_api_key,
+            base_url="https://openrouter.ai/api/v1",
+            model="anthropic/claude-3-haiku",
+            temperature=0.1,
+            max_tokens=4096,
+        )
+
+        # STRICT SYSTEM PROMPT - Prevents hallucination
+        system_prompt = (
+            "You are a strict data-extraction AI. You MUST ONLY answer using the provided Context. "
+            "If the answer or topic is not explicitly found in the Context provided below, you MUST reply with: "
+            "'I can only answer questions based on the uploaded documents.' "
+            "DO NOT use your internal knowledge under any circumstance. "
+            "DO NOT make up information. ONLY use what is in the context.\n\n"
+            "Context:\n"
+            "{context}"
+        )
+
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", system_prompt),
+            ("human", "{input}"),
+        ])
+
+        # Create RAG chain
+        # Detect summary queries for better coverage
+        query_lower = query.lower()
+        k_docs = 20 if (
+            "summary" in query_lower
+            or "summarize" in query_lower
+            or "tl" in query_lower
+        ) else 20  # Increased for quoted text search
+
+        # Extract quoted text for better retrieval
+        search_query = query
+        if "regarding this text:" in query_lower:
+            # Extract the quoted text for better search
+            import re
+            match = re.search(r'regarding this text:?"([^"]+)"', query, re.IGNORECASE)
+            if match:
+                quoted_text = match.group(1).strip()
+                # Use quoted text as the search query for better context
+                search_query = quoted_text
+                print(f"Using quoted text for retrieval: {quoted_text[:50]}...")
+
+        retriever = vector_store.as_retriever(search_kwargs={"k": k_docs})
+
+        def format_docs(docs):
+            return "\n\n".join(doc.page_content for doc in docs)
+
+        rag_chain = (
+            {"context": retriever | format_docs, "input": RunnablePassthrough()}
+            | prompt
+            | llm
+            | StrOutputParser()
+        )
+
+        # Generate answer
+        print(f"User {user_id} querying: {search_query[:50]}...")
+        final_answer = rag_chain.invoke(search_query)
+
+        # Log query to database
+        document_ids = request.document_ids
+
+        if not document_ids:
+            # Use first document if not specified
+            first_doc = db.query(Document).filter(
+                Document.user_id == user_id
+            ).first()
+
+            document_ids = [first_doc.id] if first_doc else [None]
+
+        for doc_id in document_ids:
+            if doc_id:
+                query_log = QueryLog(
+                    user_id=user_id,
+                    document_id=doc_id,
+                    query=query,
+                    response=final_answer
+                )
+                db.add(query_log)
+
+        db.commit()
+
+        return ChatResponse(answer=final_answer)
+
+    except Exception as e:
+        print(f"Error during chat: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    
+# --- PDF File Serving ---
+@app.get("/document/{document_id}/file")
+async def get_document_file(
+    document_id: int,
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get the PDF file content for viewing."""
+    document = db.query(Document).filter(
+        Document.id == document_id,
+        Document.user_id == current_user.id
+    ).first()
+    
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    if not os.path.exists(document.file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    from fastapi.responses import FileResponse
+    return FileResponse(
+        document.file_path,
+        media_type='application/pdf',
+        filename=document.original_filename
+    )
+
+# --- Summary Endpoint ---
+@app.post("/summary", response_model=SummaryResponse)
+async def get_document_summary(
+    document_id: int = None,
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Generate a summary of the uploaded PDF(s) using strict RAG context scoping.
+    """
     user_id = current_user.id
     
     # Get user's vector store
@@ -274,71 +433,128 @@ async def chat_with_pdf(
         llm = ChatOpenAI(
             api_key=openrouter_api_key,
             base_url="https://openrouter.ai/api/v1",
-model="openrouter/auto",
+            model="anthropic/claude-3-haiku",
             temperature=0.1,
             max_tokens=8192,
         )
         
-        # STRICT SYSTEM PROMPT - Prevents hallucination
+        # Get ALL documents for complete summary
+        # First get collection to know total documents
+        collection = vector_store.get()
+        total_docs = len(collection.get('ids', []))
+        k_docs = min(total_docs, 100)  # Get up to 100 docs or all if less
+        
+        print(f"Generating summary for {total_docs} document chunks...")
+        
+        retriever = vector_store.as_retriever(search_kwargs={"k": k_docs})
+        docs = retriever.invoke("summarize all content key points main topics")
+        
+        if not docs:
+            raise HTTPException(
+                status_code=400,
+                detail="No content available to summarize"
+            )
+        
+        # Join all content - take more for complete summary
+        context = "\n\n".join(doc.page_content for doc in docs)
+        
+        # STRICT SYSTEM PROMPT for summary
         system_prompt = (
-            "You are a strict data-extraction AI. You MUST ONLY answer using the provided Context. "
-            "If the answer or topic is not explicitly found in the Context provided below, you MUST reply with: "
-            "'I can only answer questions based on the uploaded documents.' "
-            "DO NOT use your internal knowledge under any circumstance. "
-            "DO NOT make up information. ONLY use what is in the context.\n\n"
+            "You are a strict data-extraction AI. Generate a comprehensive but concise summary of the provided document context. "
+            "Focus on key points, main topics, and important details. "
+            "Do NOT use your internal knowledge - ONLY use what is in the provided context.\n\n"
             "Context:\n"
             "{context}"
         )
         
         prompt = ChatPromptTemplate.from_messages([
             ("system", system_prompt),
-            ("human", "{input}"),
+            ("human", "Provide a detailed summary of this document."),
         ])
         
-        # Create RAG chain
-        # Detect summary queries for better coverage
-        query_lower = query.lower()
-        k_docs = 20 if "summary" in query_lower or "summarize" in query_lower or "tl" in query_lower else 8
+        # Create simple chain for summary
+        summary_chain = prompt | llm | StrOutputParser()
+        summary = summary_chain.invoke({"context": context})
         
-        retriever = vector_store.as_retriever(search_kwargs={"k": k_docs})
+        return SummaryResponse(summary=summary)
         
-        def format_docs(docs):
-            return "\n\n".join(doc.page_content for doc in docs)
-        
-        rag_chain = (
-            {"context": retriever | format_docs, "input": RunnablePassthrough()}
-            | prompt
-            | llm
-            | StrOutputParser()
-        )
-        
-        # Generate answer
-        print(f"User {user_id} querying: {query}")
-        final_answer = rag_chain.invoke(query)
-        
-        # Log query to database
-        document_ids = request.document_ids
-        if not document_ids:
-            # Use first document if not specified
-            first_doc = db.query(Document).filter(Document.user_id == user_id).first()
-            document_ids = [first_doc.id] if first_doc else [None]
-        
-        for doc_id in document_ids:
-            if doc_id:
-                query_log = QueryLog(
-                    user_id=user_id,
-                    document_id=doc_id,
-                    query=query,
-                    response=final_answer
-                )
-                db.add(query_log)
-        
-        db.commit()
-        
-        return ChatResponse(answer=final_answer)
-        
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"Error during chat: {e}")
+        print(f"Error during summary generation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- Convert Summary to PDF ---
+@app.post("/summary/convert/pdf")
+async def convert_summary_to_pdf(
+    summary_text: str,
+    current_user = Depends(get_current_user)
+):
+    """Convert summary text to PDF and return as downloadable file."""
+    try:
+        from weasyprint import HTML
+        import io
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body {{ font-family: Arial, sans-serif; padding: 40px; line-height: 1.6; }}
+                h1 {{ color: #333; }}
+                p {{ text-align: justify; }}
+            </style>
+        </head>
+        <body>
+            <h1>Document Summary</h1>
+            <p>{summary_text.replace(chr(10), '<br>')}</p>
+        </body>
+        </html>
+        """
+        
+        pdf_bytes = HTML(string=html_content).write_pdf()
+        
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=summary.pdf"}
+        )
+    except Exception as e:
+        print(f"Error converting to PDF: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- Convert Summary to Word ---
+@app.post("/summary/convert/word")
+async def convert_summary_to_word(
+    summary_text: str,
+    current_user = Depends(get_current_user)
+):
+    """Convert summary text to Word document and return as downloadable file."""
+    try:
+        from docx import Document
+        import io
+        
+        doc = Document()
+        doc.add_heading('Document Summary', 0)
+        
+        # Add paragraphs
+        for para in summary_text.split('\n\n'):
+            if para.strip():
+                doc.add_paragraph(para.strip())
+        
+        # Save to bytes
+        file_stream = io.BytesIO()
+        doc.save(file_stream)
+        file_stream.seek(0)
+        
+        return StreamingResponse(
+            file_stream,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": "attachment; filename=summary.docx"}
+        )
+    except Exception as e:
+        print(f"Error converting to Word: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # --- User Documents Endpoints ---
@@ -386,6 +602,154 @@ async def get_query_history(
             for log in query_logs
         ]
     }
+
+# --- Highlights Endpoints ---
+class HighlightCreate(BaseModel):
+    document_id: int
+    text: str
+    color: str = "#FFEB3B"
+    page_number: int = 1
+
+class HighlightResponse(BaseModel):
+    id: int
+    document_id: int
+    text: str
+    color: str
+    page_number: int
+    created_at: datetime
+
+@app.post("/highlights", response_model=HighlightResponse)
+async def create_highlight(
+    highlight: HighlightCreate,
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a new highlight."""
+    new_highlight = Highlight(
+        user_id=current_user.id,
+        document_id=highlight.document_id,
+        text=highlight.text,
+        color=highlight.color,
+        page_number=highlight.page_number
+    )
+    db.add(new_highlight)
+    db.commit()
+    db.refresh(new_highlight)
+    return new_highlight
+
+@app.get("/highlights")
+async def get_highlights(
+    document_id: int = None,
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all highlights for the user."""
+    query = db.query(Highlight).filter(Highlight.user_id == current_user.id)
+    if document_id:
+        query = query.filter(Highlight.document_id == document_id)
+    highlights = query.all()
+    return {
+        "highlights": [
+            {
+                "id": h.id,
+                "document_id": h.document_id,
+                "text": h.text,
+                "color": h.color,
+                "page_number": h.page_number,
+                "created_at": h.created_at
+            }
+            for h in highlights
+        ]
+    }
+
+@app.delete("/highlights/{highlight_id}")
+async def delete_highlight(
+    highlight_id: int,
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete a highlight."""
+    highlight = db.query(Highlight).filter(
+        Highlight.id == highlight_id,
+        Highlight.user_id == current_user.id
+    ).first()
+    if not highlight:
+        raise HTTPException(status_code=404, detail="Highlight not found")
+    db.delete(highlight)
+    db.commit()
+    return {"message": "Highlight deleted"}
+
+# --- Notes Endpoints ---
+class NoteCreate(BaseModel):
+    document_id: int
+    content: str
+    page_number: int = 1
+
+class NoteResponse(BaseModel):
+    id: int
+    document_id: int
+    content: str
+    page_number: int
+    created_at: datetime
+
+@app.post("/notes", response_model=NoteResponse)
+async def create_note(
+    note: NoteCreate,
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a new note."""
+    new_note = Note(
+        user_id=current_user.id,
+        document_id=note.document_id,
+        content=note.content,
+        page_number=note.page_number
+    )
+    db.add(new_note)
+    db.commit()
+    db.refresh(new_note)
+    return new_note
+
+@app.get("/notes")
+async def get_notes(
+    document_id: int = None,
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all notes for the user."""
+    query = db.query(Note).filter(Note.user_id == current_user.id)
+    if document_id:
+        query = query.filter(Note.document_id == document_id)
+    notes = query.all()
+    return {
+        "notes": [
+            {
+                "id": n.id,
+                "document_id": n.document_id,
+                "content": n.content,
+                "page_number": n.page_number,
+                "created_at": n.created_at
+            }
+            for n in notes
+        ]
+    }
+
+@app.delete("/notes/{note_id}")
+async def delete_note(
+    note_id: int,
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete a note."""
+    note = db.query(Note).filter(
+        Note.id == note_id,
+        Note.user_id == current_user.id
+    ).first()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    db.delete(note)
+    db.commit()
+    return {"message": "Note deleted"}
 
 # --- Health Check ---
 @app.get("/")

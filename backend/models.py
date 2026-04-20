@@ -21,6 +21,8 @@ class User(Base):
     # Relationships
     documents = relationship("Document", back_populates="user", cascade="all, delete-orphan")
     query_logs = relationship("QueryLog", back_populates="user", cascade="all, delete-orphan")
+    highlights = relationship("Highlight", back_populates="user", cascade="all, delete-orphan")
+    notes = relationship("Note", back_populates="user", cascade="all, delete-orphan")
 
 
 class Document(Base):
@@ -39,6 +41,8 @@ class Document(Base):
     # Relationships
     user = relationship("User", back_populates="documents")
     query_logs = relationship("QueryLog", back_populates="document", cascade="all, delete-orphan")
+    highlights = relationship("Highlight", back_populates="document", cascade="all, delete-orphan")
+    notes = relationship("Note", back_populates="document", cascade="all, delete-orphan")
 
 
 class QueryLog(Base):
@@ -55,3 +59,36 @@ class QueryLog(Base):
     # Relationships
     user = relationship("User", back_populates="query_logs")
     document = relationship("Document", back_populates="query_logs")
+
+
+class Highlight(Base):
+    """Highlight model to store text highlights from PDFs."""
+    __tablename__ = "highlights"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    document_id = Column(Integer, ForeignKey("documents.id"), nullable=False, index=True)
+    text = Column(Text, nullable=False)
+    color = Column(String(20), default="#FFEB3B")
+    page_number = Column(Integer, default=1)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    user = relationship("User", back_populates="highlights")
+    document = relationship("Document", back_populates="highlights")
+
+
+class Note(Base):
+    """Note model to store notes from PDFs."""
+    __tablename__ = "notes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    document_id = Column(Integer, ForeignKey("documents.id"), nullable=False, index=True)
+    content = Column(Text, nullable=False)
+    page_number = Column(Integer, default=1)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    user = relationship("User", back_populates="notes")
+    document = relationship("Document", back_populates="notes")
