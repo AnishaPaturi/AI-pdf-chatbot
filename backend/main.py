@@ -32,6 +32,8 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv(override=True)
 
+print("Starting DocuMind Backend...")
+
 # --- FastAPI App Setup ---
 app = FastAPI(
     title="AI PDF Chatbot API",
@@ -40,28 +42,38 @@ app = FastAPI(
 )
 
 # CORS Configuration
+# Get allowed origins from environment variable for production
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # --- Configuration ---
-UPLOAD_DIR = "./uploads"
-CHROMA_DB_DIR = "./chroma_db"
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", "./uploads")
+CHROMA_DB_DIR = os.getenv("CHROMA_DB_DIR", "./chroma_db")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(CHROMA_DB_DIR, exist_ok=True)
 
 # Initialize database on startup
 @app.on_event("startup")
 async def startup_event():
     """Initialize database tables on startup."""
-    init_db()
-    print("✓ Database initialized")
+    try:
+        init_db()
+        print("✓ Database initialized")
+    except Exception as e:
+        print(f"⚠ Database init warning: {e}")
 
-# Initialize embeddings
-embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+# Initialize embeddings (lazy load in production to avoid download issues)
+def get_embeddings():
+    global embeddings
+    if embeddings is None:
+        embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    return embeddings
 
 # Vector store cache
 vector_store_cache = {}
@@ -74,7 +86,7 @@ def get_or_create_vector_store(user_id: int):
         if os.path.exists(user_chroma_dir):
             vector_store_cache[user_id] = Chroma(
                 persist_directory=user_chroma_dir,
-                embedding_function=embeddings
+                embedding_function=get_embeddings()
             )
         else:
             vector_store_cache[user_id] = None
@@ -759,10 +771,11 @@ async def delete_note(
 
 # --- Health Check ---
 @app.get("/")
+@app.get("/health")
 async def root():
     """Health check endpoint."""
     return {
-        "message": "AI PDF Chatbot Backend v2.0 is running",
+        "message": "DocuMind Backend v2.0 is running",
         "status": "online",
-        "features": ["JWT Auth", "Multi-PDF Support", "Strict LLM Scoping"]
+        "features": ["JWT Auth", "Multi-PDF Support", "Interactive Chat"]
     }
