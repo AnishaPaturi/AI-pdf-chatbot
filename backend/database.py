@@ -11,6 +11,20 @@ DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{db_path}")
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
+# Fix SQLite paths that reference non-existent directories (e.g. backend/ from inside backend/)
+if DATABASE_URL.startswith("sqlite:///"):
+    sqlite_path = DATABASE_URL.replace("sqlite:///", "", 1)
+    dir_name = os.path.dirname(sqlite_path)
+    if dir_name:
+        try:
+            if (dir_name in ["backend", "./backend", ".\\backend"]) and not os.path.exists(dir_name):
+                db_filename = os.path.basename(sqlite_path)
+                DATABASE_URL = f"sqlite:///{db_filename}"
+            else:
+                os.makedirs(dir_name, exist_ok=True)
+        except Exception as e:
+            print(f"⚠ Could not ensure database directory exists: {e}")
+
 # Create the SQLAlchemy engine
 engine = create_engine(
     DATABASE_URL,
