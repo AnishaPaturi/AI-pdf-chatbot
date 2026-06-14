@@ -55,8 +55,14 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash."""
-    password_bytes = plain_password.encode('utf-8')[:72]
-    return bcrypt.checkpw(password_bytes, hashed_password.encode('utf-8'))
+    try:
+        if not hashed_password:
+            return False
+        password_bytes = plain_password.encode('utf-8')[:72]
+        return bcrypt.checkpw(password_bytes, hashed_password.encode('utf-8'))
+    except Exception as e:
+        print(f"Password verification error: {e}")
+        return False
 
 
 # --- JWT Token Functions ---

@@ -7,6 +7,10 @@ import os
 db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "documind.db")
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{db_path}")
 
+# Fix Render/Heroku postgres URL format (replace postgres:// with postgresql://)
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 # Create the SQLAlchemy engine
 engine = create_engine(
     DATABASE_URL,
