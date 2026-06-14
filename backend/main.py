@@ -1,9 +1,10 @@
 import os
 import shutil
 from datetime import datetime
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Form, Body
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Form, Body, Request
+from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+import traceback
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from typing import List
@@ -60,6 +61,33 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- Global Exception Handler (fixes CORS on 500 errors and exposes error details) ---
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    print("=== GLOBAL EXCEPTION HANDLER ===")
+    traceback.print_exc()
+    
+    # Extract request origin for CORS headers
+    origin = request.headers.get("origin", "*")
+    
+    # Print the exception details
+    print(f"Exception Type: {type(exc).__name__}")
+    print(f"Exception Message: {str(exc)}")
+    
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": f"Internal Server Error: {str(exc)}",
+            "type": type(exc).__name__,
+        },
+        headers={
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Methods": "*",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
 
 # --- Configuration ---
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "./uploads")
