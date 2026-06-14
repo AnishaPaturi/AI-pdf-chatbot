@@ -41,10 +41,21 @@ app = FastAPI(
     version="2.0"
 )
 
-# CORS Configuration - Allow all origins for deployment
+# CORS Configuration
+origins = [
+    "https://ai-pdf-chatbot-weld.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:5173",
+]
+
+# Allow overriding origins via environment variable (useful for preview deploys)
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS")
+if allowed_origins_env:
+    origins = [o.strip() for o in allowed_origins_env.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -62,6 +73,9 @@ try:
     print("✓ Database ready")
 except Exception as e:
     print(f"⚠ Database init error: {e}")
+
+# Global embeddings cache
+embeddings = None
 
 # Initialize embeddings (lazy load in production to avoid download issues)
 def get_embeddings():
@@ -220,7 +234,7 @@ async def upload_pdfs(
                     # Create new vector store
                     vector_store = Chroma.from_documents(
                         documents=chunks,
-                        embedding=embeddings,
+                        embedding=get_embeddings(),
                         persist_directory=user_chroma_dir
                     )
                 

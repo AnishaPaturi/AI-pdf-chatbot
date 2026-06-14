@@ -22,6 +22,7 @@ export default function Home() {
           </motion.div>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium">
             <button className="text-white/70 hover:text-white transition">Features</button>
+            <button className="text-white/70 hover:text-white transition">Pricing</button>
             <button className="text-white/70 hover:text-white transition">Docs</button>
           </div>
           <div className="flex items-center gap-4">
@@ -120,131 +121,59 @@ export default function Home() {
         </motion.div>
       </section>
 
-       {/* Features Section */}
-       <section className="py-24 px-6 border-t border-white/10">
-         <div className="max-w-7xl mx-auto">
-           <motion.h2
-             variants={fadeInUp}
-             initial="initial"
-             whileInView="animate"
-             viewport={{ once: true }}
-             className="text-4xl md:text-5xl font-bold text-center mb-16"
-           >
-             Everything you need
-           </motion.h2>
+      {/* Features Section */}
+      <section className="py-24 px-6 border-t border-white/10">
+        <div className="max-w-7xl mx-auto">
+          <motion.h2
+            variants={fadeInUp}
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+            className="text-4xl md:text-5xl font-bold text-center mb-16"
+          >
+            Everything you need
+          </motion.h2>
 
-           <div className="grid md:grid-cols-2 gap-12">
-             {[
-               {
-                 icon: Zap,
-                 title: 'Lightning fast',
-                 description: 'Get answers in milliseconds with our optimized vector search engine'
-               },
-               {
-                 icon: Shield,
-                 title: 'Secure & private',
-                 description: 'Your documents stay on your device. End-to-end encryption'
-               },
-               {
-                 icon: BarChart3,
-                 title: 'Analytics included',
-                 description: 'Track queries, understand patterns, and optimize your workflow'
-               },
-               {
-                 icon: MessageSquare,
-                 title: 'Natural language',
-                 description: 'Ask questions in plain English just like talking to a colleague'
-               }
-             ].map((feature, i) => (
-               <motion.div
-                 key={i}
-                 variants={fadeInUp}
-                 initial="initial"
-                 whileInView="animate"
-                 viewport={{ once: true }}
-                 transition={{ delay: i * 0.1 }}
-                 className="p-8 rounded-xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition"
-               >
-                 <feature.icon className="w-8 h-8 mb-4 text-white" />
-                 <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
-                 <p className="text-white/60">{feature.description}</p>
-               </motion.div>
-             ))}
-           </div>
-
-           {/* Amazon Lex Summary Card */}
-           <motion.div
-             variants={fadeInUp}
-             initial="initial"
-             whileInView="animate"
-             viewport={{ once: true }}
-             transition={{ delay: 0.5 }}
-             className="mt-20"
-           >
-             <div className="inline-block px-4 py-2 rounded-full bg-white/10 border border-white/20 text-sm font-medium text-white/80 mb-6">
-               Amazon Lex V2 Concepts
-             </div>
-             <div className="bg-gradient-to-br from-slate-900/50 to-slate-800/30 border border-white/10 rounded-2xl p-8 md:p-10">
-               <h3 className="text-2xl md:text-3xl font-bold text-white mb-2">
-                 Building Conversational Interfaces
-               </h3>
-               <p className="text-white/60 text-lg mb-8 max-w-3xl">
-                 Amazon Lex is a fully-managed AI service for creating chatbots with natural language understanding and speech recognition.
-               </p>
-
-               <div className="grid md:grid-cols-2 gap-6">
-                 {[
-                   {
-                     title: 'Bot',
-                     desc: 'Main resource; languages add intents and slot types'
-                   },
-                   {
-                     title: 'Intent',
-                     desc: 'The goal a user wants to achieve; each intent has sample utterances'
-                   },
-                   {
-                     title: 'Utterances',
-                     desc: 'Phrases users say to trigger an intent; can contain slot names in braces to capture values'
-                   },
-                   {
-                     title: 'Slots',
-                     desc: 'Pieces of information required to fulfill an intent; each has a slot type (e.g., Number, Date)'
-                   },
-                   {
-                     title: 'Initial Response',
-                     desc: 'Sent after the intent is determined but before slot values are elicited'
-                   },
-                   {
-                     title: 'Confirmation',
-                     desc: 'Validates intent details with the user before proceeding'
-                   },
-                   {
-                     title: 'Fulfillment',
-                     desc: 'Messages that inform the user about the status of completing the intent'
-                   },
-                   {
-                     title: 'Closing Response',
-                     desc: 'Sent after fulfillment to end the conversation'
-                   }
-                 ].map((item, i) => (
-                   <div
-                     key={i}
-                     className="p-5 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition"
-                   >
-                     <h4 className="text-base font-bold text-white mb-2 flex items-center gap-2">
-                       <span className="w-6 h-6 rounded-full bg-white/10 text-xs flex items-center justify-center text-white/80">
-                         {String(i + 1).padStart(2, '0')}
-                       </span>
-                       {item.title}
-                     </h4>
-                     <p className="text-sm text-white/50 leading-relaxed">{item.desc}</p>
-                   </div>
-                ))}
-               </div>
-             </div>
-           </motion.div>
-         </div>
-       </section>
+          <div className="grid md:grid-cols-2 gap-12">
+            {[
+              {
+                icon: Zap,
+                title: 'Lightning fast',
+                description: 'Get answers in milliseconds with our optimized vector search engine'
+              },
+              {
+                icon: Shield,
+                title: 'Secure & private',
+                description: 'Your documents stay on your device. End-to-end encryption'
+              },
+              {
+                icon: BarChart3,
+                title: 'Analytics included',
+                description: 'Track queries, understand patterns, and optimize your workflow'
+              },
+              {
+                icon: MessageSquare,
+                title: 'Natural language',
+                description: 'Ask questions in plain English just like talking to a colleague'
+              }
+            ].map((feature, i) => (
+              <motion.div
+                key={i}
+                variants={fadeInUp}
+                initial="initial"
+                whileInView="animate"
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="p-8 rounded-xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition"
+              >
+                <feature.icon className="w-8 h-8 mb-4 text-white" />
+                <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
+                <p className="text-white/60">{feature.description}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* How it works */}
       <section className="py-24 px-6 border-t border-white/10">
@@ -295,6 +224,78 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Pricing */}
+      <section className="py-24 px-6 border-t border-white/10">
+        <div className="max-w-7xl mx-auto">
+          <motion.h2
+            variants={fadeInUp}
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+            className="text-4xl md:text-5xl font-bold text-center mb-16"
+          >
+            Simple pricing
+          </motion.h2>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                name: 'Starter',
+                price: 'Free',
+                desc: 'Perfect for trying us out',
+                features: ['Up to 5 PDFs', '100 messages/month', 'Basic support']
+              },
+              {
+                name: 'Pro',
+                price: '$29/mo',
+                desc: 'For power users',
+                features: ['Unlimited PDFs', 'Unlimited messages', 'Email support', 'Query analytics'],
+                highlighted: true
+              },
+              {
+                name: 'Enterprise',
+                price: 'Custom',
+                desc: 'For teams',
+                features: ['Everything in Pro', 'SSO & SCIM', 'Advanced security', 'Dedicated support']
+              }
+            ].map((plan, i) => (
+              <motion.div
+                key={i}
+                variants={fadeInUp}
+                initial="initial"
+                whileInView="animate"
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className={`p-8 rounded-xl border transition ${
+                  plan.highlighted
+                    ? 'bg-white text-black border-white'
+                    : 'bg-white/[0.02] border-white/10 hover:border-white/20'
+                }`}
+              >
+                <h3 className="text-xl font-bold mb-1">{plan.name}</h3>
+                <p className={plan.highlighted ? 'text-black/60 text-sm mb-4' : 'text-white/60 text-sm mb-4'}>{plan.desc}</p>
+                <div className="text-3xl font-bold mb-6">{plan.price}</div>
+                <ul className="space-y-3 mb-8">
+                  {plan.features.map((feature, j) => (
+                    <li key={j} className="flex items-center gap-3">
+                      <CheckCircle className="w-5 h-5" />
+                      <span className="text-sm">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <button className={`w-full py-2.5 rounded-lg font-semibold transition ${
+                  plan.highlighted
+                    ? 'bg-black text-white hover:bg-white/20'
+                    : 'bg-white/10 text-white hover:bg-white/20 border border-white/20'
+                }`}>
+                  Get started
+                </button>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="py-24 px-6 border-t border-white/10">
         <motion.div
@@ -326,6 +327,7 @@ export default function Home() {
               <div className="font-semibold mb-4">Product</div>
               <ul className="space-y-2 text-white/60 text-sm">
                 <li><button className="hover:text-white transition">Features</button></li>
+                <li><button className="hover:text-white transition">Pricing</button></li>
                 <li><button className="hover:text-white transition">Security</button></li>
               </ul>
             </div>
